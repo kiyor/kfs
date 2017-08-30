@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Tue Aug 29 12:48:11 2017
+* Last Modified : Wed 30 Aug 2017 12:55:28 AM UTC
 
 * Created By : Kiyor
 
@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -712,14 +711,6 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		upath = "/" + upath
 		r.URL.Path = upath
 	}
-	//
-	log.Println(f.root.Root() + path.Clean(upath))
-	stat, err := os.Stat(f.root.Root() + path.Clean(upath))
-	if err != nil {
-		log.Println(err.Error())
-	}
-	log.Println(stat)
-	//
 	serveFile(w, r, f.root, path.Clean(upath), true)
 }
 

@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Tue Aug 29 12:55:28 2017
+* Last Modified : Wed 30 Aug 2017 01:40:49 AM UTC
 
 * Created By : Kiyor
 
@@ -21,8 +21,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 var (
@@ -69,16 +71,16 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-      {{if .BackUrl}}<a href="{{.BackUrl}}"><h1> &lt; </h1></a>{{end}}
+      <a href="{{.Url|urlBack|string}}"><h1> &lt; </h1></a>
     </div>
-    <div class="col-8">
+    <div class="col-5">
       <h1>{{.Title}}</h1>
     </div>
-    <div class="col-1">
-      <p><a href={{.UrlPhoto}}>PhotoGen</a></p>
-    </div>
     <div class="col-2">
-      <form action="{{.Url}}" method="get" class="bd-search hidden-sm-down">
+      <a href={{urlSetQuery .Url "photo" "1"|string}}><button type="button" class="btn btn-secondary">PhotoGen</button></a>
+    </div>
+    <div class="col-4">
+      <form action="{{.Url|string}}" method="get" class="bd-search hidden-sm-down">
         <input type="text" name="key" placeholder="Search..." value="{{.Key}}" autofocus>
       </form>
     </div>
@@ -95,7 +97,7 @@ const (
           <th><a href="{{index .Urls "lastMod"}}">LastMod</a></th>
         </tr>
         {{range .Files}}<tr>
-          <td>{{.Icon}}  <a href="{{.Url}}">{{.Name}}</a></td>
+          <td>{{.Name|icon}}  <a href="{{.Url|string}}">{{.Name}}</a></td>
           <td>{{.Size}}</td>
           <td>{{.LastMod}}</td>
         </tr>{{end}}
@@ -109,7 +111,7 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-      {{if .BackUrl}}<a href="{{.BackUrl}}"><h1> &lt; </h1></a>{{end}}
+      <a href="{{.Url|urlBack|string}}"><h1> &lt; </h1></a>
 	</div>
     <div class="col-11">
 	</div>
@@ -122,22 +124,90 @@ const (
 )
 
 type Page struct {
-	Title    string
-	Files    []*PageFile
-	Url      string
-	Urls     map[string]string
-	Key      string
-	BackUrl  string
-	UrlPhoto string
-	Desc     string
+	Title string
+	Files []*PageFile
+	Url   url.URL
+	Urls  map[string]string
+	Key   string
+	Desc  string
 }
 
 type PageFile struct {
 	Name    string
-	Url     string
-	Icon    template.HTML
+	Url     url.URL
 	Size    string
 	LastMod string
+}
+
+var tmpFundMap = template.FuncMap{
+	"string":        tmpString,
+	"urlSetQuery":   urlSetQuery,
+	"urlCleanQuery": urlCleanQuery,
+	"urlBack":       urlBack,
+	"time":          prettyTime,
+	"icon":          getIcon,
+}
+
+func tmpString(i interface{}) template.HTML {
+	switch v := i.(type) {
+	case url.URL:
+		return template.HTML(v.String())
+	case *url.URL:
+		return template.HTML(v.String())
+	}
+	return "-"
+}
+
+func urlBack(u url.URL) url.URL {
+	// 	return url.URL{Path: filepath.Dir(u.Path)}
+	p := strings.Split(u.Path, "/")
+	var b string
+	if len(p) > 2 {
+		b = "/" + strings.Join(p[1:len(p)-2], "/") + "/"
+		if strings.Contains(b, "//") {
+			b = "/"
+		}
+	}
+	u.Path = b
+	return u
+}
+
+func urlCleanQuery(u url.URL) url.URL {
+	u.RawQuery = ""
+	return u
+}
+
+func urlSetQuery(u url.URL, key, value string) url.URL {
+	v := u.Query()
+	v.Set(key, value)
+	u.RawQuery = v.Encode()
+	return u
+}
+
+func prettyTime(t time.Time) template.HTML {
+	since := time.Since(t)
+	// 	r := strings.NewReplacer("h", " Hour ", "m", " Minute ")
+	switch {
+	case since < (1 * time.Second):
+		return template.HTML("1 Seconds Ago")
+
+	case since < (60 * time.Second):
+		s := strings.Split(fmt.Sprint(since), ".")[0]
+		// 		s = r.Replace(s)
+		return template.HTML(s + " Seconds Ago")
+
+	case since < (60 * time.Minute):
+		s := strings.Split(fmt.Sprint(since), ".")[0]
+		return template.HTML(strings.Split(s, "m")[0] + " Minutes ago")
+
+	case since < (24 * time.Hour):
+		s := strings.Split(fmt.Sprint(since), ".")[0]
+		return template.HTML(strings.Split(s, "h")[0] + " Hours ago")
+
+	default:
+		return template.HTML(t.Format("01-02-06 15:04:05"))
+	}
+	return template.HTML("")
 }
 
 func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
@@ -172,6 +242,11 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 				return
 			}
 			if strings.Contains(v.Name(), key) {
+				// 			b, err := filepath.Match(v.Name(), key)
+				// 			if err != nil {
+				// 				log.Println(err.Error())
+				// 			}
+				// 			if b {
 				list = append(list, v)
 			}
 		}
@@ -186,12 +261,12 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 	if page.Title == "." {
 		page.Title = "/"
 	}
-	page.Url = r.URL.String()
+	page.Url = *r.URL
 	page.Urls = make(map[string]string)
 	page.Key = key
-	v.Set("photo", "1")
-	r.URL.RawQuery = v.Encode()
-	page.UrlPhoto = r.URL.String()
+	// 	v.Set("photo", "1")
+	// 	r.URL.RawQuery = v.Encode()
+	// 	page.UrlPhoto = r.URL.String()
 
 	for _, t := range []string{"name", "size", "lastMod"} {
 		v.Set("by", t)
@@ -231,26 +306,18 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	r.URL.RawQuery = ""
-	p := strings.Split(r.URL.String(), "/")
-	if len(p) > 2 {
-		page.BackUrl = "/" + strings.Join(p[1:len(p)-2], "/") + "/"
-		if strings.Contains(page.BackUrl, "//") {
-			page.BackUrl = "/"
-		}
-	}
 	for _, d := range dirs {
 		var f PageFile
 		f.Name = d.Name()
 		if d.IsDir() {
 			f.Name += "/"
-			f.Icon = `<i class="fa fa-folder-open-o" aria-hidden="true"></i>`
+			// 			f.Icon = `<i class="fa fa-folder-open-o" aria-hidden="true"></i>`
 		} else {
-			f.Icon = getIcon(f.Name)
+			// 			f.Icon = getIcon(f.Name)
 		}
 		f.Name = htmlReplacer.Replace(f.Name)
 		u := url.URL{Path: f.Name}
-		f.Url = u.String()
+		f.Url = u
 		f.Size = humanize.IBytes(uint64(d.Size()))
 		f.LastMod = d.ModTime().Format("01-02-2006 15:04:05")
 
@@ -260,7 +327,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 		// 		url := url.URL{Path: name}
 		page.Files = append(page.Files, &f)
 	}
-	tmpl, err := template.New("page").Parse(staticTemplate)
+	tmpl, err := template.New("page").Funcs(tmpFundMap).Parse(staticTemplate)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -270,10 +337,13 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 	}
 }
 
-func getIcon(file string) template.HTML {
-	p := strings.Split(file, ".")
-	if len(p) > 1 {
-		ext := p[len(p)-1:][0]
+func getIcon(i interface{}) template.HTML {
+	switch v := i.(type) {
+	case string:
+		if strings.HasSuffix(v, "/") {
+			return template.HTML(`<i class="fa fa-folder-open-o" aria-hidden="true"></i>`)
+		}
+		ext := filepath.Ext(v)
 		if v, ok := extIcon[ext]; ok {
 			return template.HTML(fmt.Sprintf(`<i class="fa fa-%s" aria-hidden="true"></i>`, v))
 		}

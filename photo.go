@@ -6,7 +6,7 @@
 
 * Creation Date : 08-28-2017
 
-* Last Modified : Mon Aug 28 20:15:53 2017
+* Last Modified : Tue 29 Aug 2017 11:57:31 PM UTC
 
 * Created By : Kiyor
 
@@ -121,22 +121,19 @@ func init() {
 	flag.Parse()
 }
 
-func mkphoto(dir string) {
+func mkphoto(dir string) error {
 	var images Images
 	abs, _ := filepath.Abs(dir)
 	images.Title = filepath.Base(abs)
 	fs := readDir(dir)
 	if len(fs) == 0 {
-		return
+		return nil
 	}
 	for _, f := range fs {
 		images.Images = append(images.Images, Image(f.Name()))
 	}
 
-	err := ioutil.WriteFile(dir+"/photo.html", []byte(images.Exec()), 0644)
-	if err != nil {
-		panic(err)
-	}
+	return ioutil.WriteFile(dir+"/photo.html", []byte(images.Exec()), 0644)
 }
 
 func readDir(path string) (fs []os.FileInfo) {

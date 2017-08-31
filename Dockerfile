@@ -4,5 +4,5 @@ RUN cd /go/src/github.com/kiyor/kfs && \
 	go get && \
 	go install github.com/kiyor/kfs
 
-EXPOSE 1080
+EXPOSE 8080
 ENTRYPOINT ["/go/bin/kfs"]

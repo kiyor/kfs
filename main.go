@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Tue Aug 29 12:44:47 2017
+* Last Modified : Thu 31 Aug 2017 11:08:48 PM UTC
 
 * Created By : Kiyor
 
@@ -27,10 +27,10 @@ import (
 )
 
 var (
-	stop bool
-	wg   = new(sync.WaitGroup)
-	// 	ch     = make(chan bool)
-	listen = flag.String("l", ":8080", "listen interface")
+	stop    bool
+	wg      = new(sync.WaitGroup)
+	listen  = flag.String("l", ":8080", "listen interface")
+	rootDir = flag.String("root", ".", "root dir")
 )
 
 func init() {
@@ -49,12 +49,11 @@ func main() {
 		}
 		wg.Add(1)
 		defer wg.Done()
-		// 		ch <- true
 
 		w.Header().Add("Connection", "Keep-Alive")
 		w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
 		if req.Method == "GET" {
-			f := &fileHandler{Dir(".")}
+			f := &fileHandler{Dir(*rootDir)}
 			f.ServeHTTP(w, req)
 			// 		} else if req.Method == "POST" || req.Method == "PUT" {
 			// 			uploadHandler(w, req)
@@ -65,7 +64,7 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
 	mux.Handle("/", LogHandler(handler))
-	log.Println("Listen:", *listen)
+	log.Println("Listen:", *listen, "Root:", *rootDir)
 	go func() {
 		err := http.ListenAndServe(*listen, mux)
 		if err != nil {

@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Wed 30 Aug 2017 01:40:49 AM UTC
+* Last Modified : Thu 31 Aug 2017 11:12:08 PM UTC
 
 * Created By : Kiyor
 
@@ -52,6 +52,9 @@ const (
 <meta http-equiv="Content-Language" content="en">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
 </head>
 <style>
   body {
@@ -71,7 +74,7 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-      <a href="{{.Url|urlBack|string}}"><h1> &lt; </h1></a>
+      <a href="{{.Url|urlBack|string}}#{{(printf "%s/" .Title)|hash}}"><h1> &lt; </h1></a>
     </div>
     <div class="col-5">
       <h1>{{.Title}}</h1>
@@ -94,12 +97,23 @@ const (
         <tr>
           <th><a href="{{index .Urls "name"}}">Name</a></th>
           <th><a href="{{index .Urls "size"}}">Size</a></th> 
+          <th>Func</th>
           <th><a href="{{index .Urls "lastMod"}}">LastMod</a></th>
         </tr>
         {{range .Files}}<tr>
-          <td>{{.Name|icon}}  <a href="{{.Url|string}}">{{.Name}}</a></td>
+          <td>{{.Name|icon}}  <a name="{{.Name|hash}}" href="{{.Url|string}}">{{.Name}}</a></td>
           <td>{{.Size}}</td>
-          <td>{{.LastMod}}</td>
+          <td>
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle" type="button" id="{{.Name|hash}}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+    Func
+  </button>
+  <div class="dropdown-menu" aria-labelledby="{{.Name|hash}}">
+    <a class="dropdown-item" href="{{urlSetQuery .Url "delete" "1"|string}}">Delete</a>
+  </div>
+</div>
+		  </td>
+          <td>{{.ModTime|time}}</td>
         </tr>{{end}}
       </table>
     </div>
@@ -111,12 +125,13 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-      <a href="{{.Url|urlBack|string}}"><h1> &lt; </h1></a>
+      <a href="{{.Url|urlBack|string}}#{{(printf "%s/" .Title)|hash}}"><h1> &lt; </h1></a>
 	</div>
     <div class="col-11">
 	</div>
   </div>
 </div>
+
 
 </body>
 </html>
@@ -137,6 +152,7 @@ type PageFile struct {
 	Url     url.URL
 	Size    string
 	LastMod string
+	ModTime time.Time
 }
 
 var tmpFundMap = template.FuncMap{
@@ -146,6 +162,7 @@ var tmpFundMap = template.FuncMap{
 	"urlBack":       urlBack,
 	"time":          prettyTime,
 	"icon":          getIcon,
+	"hash":          hash,
 }
 
 func tmpString(i interface{}) template.HTML {
@@ -186,26 +203,24 @@ func urlSetQuery(u url.URL, key, value string) url.URL {
 
 func prettyTime(t time.Time) template.HTML {
 	since := time.Since(t)
-	// 	r := strings.NewReplacer("h", " Hour ", "m", " Minute ")
 	switch {
 	case since < (1 * time.Second):
-		return template.HTML("1 Seconds Ago")
+		return template.HTML("1s")
 
 	case since < (60 * time.Second):
 		s := strings.Split(fmt.Sprint(since), ".")[0]
-		// 		s = r.Replace(s)
-		return template.HTML(s + " Seconds Ago")
+		return template.HTML(s + "s")
 
 	case since < (60 * time.Minute):
 		s := strings.Split(fmt.Sprint(since), ".")[0]
-		return template.HTML(strings.Split(s, "m")[0] + " Minutes ago")
+		return template.HTML(strings.Split(s, "m")[0] + "m")
 
 	case since < (24 * time.Hour):
 		s := strings.Split(fmt.Sprint(since), ".")[0]
-		return template.HTML(strings.Split(s, "h")[0] + " Hours ago")
+		return template.HTML(strings.Split(s, "h")[0] + "h")
 
 	default:
-		return template.HTML(t.Format("01-02-06 15:04:05"))
+		return template.HTML(t.Format("01-02-06"))
 	}
 	return template.HTML("")
 }
@@ -258,7 +273,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 	page := new(Page)
 	stat, _ := f.Stat()
 	page.Title = stat.Name()
-	if page.Title == "." {
+	if r.URL.Path == "/" {
 		page.Title = "/"
 	}
 	page.Url = *r.URL
@@ -315,11 +330,12 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 		} else {
 			// 			f.Icon = getIcon(f.Name)
 		}
-		f.Name = htmlReplacer.Replace(f.Name)
+		// 		f.Name = htmlReplacer.Replace(f.Name)
 		u := url.URL{Path: f.Name}
 		f.Url = u
 		f.Size = humanize.IBytes(uint64(d.Size()))
-		f.LastMod = d.ModTime().Format("01-02-2006 15:04:05")
+		// 		f.LastMod = d.ModTime().Format("01-02-2006 15:04:05")
+		f.ModTime = d.ModTime()
 
 		// name may contain '?' or '#', which must be escaped to remain
 		// part of the URL path, and not indicate the start of a query

@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Fri 01 Sep 2017 07:22:55 PM UTC
+* Last Modified : Sat 02 Sep 2017 07:11:30 AM UTC
 
 * Created By : Kiyor
 
@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -106,7 +107,7 @@ const (
         </tr>
         {{range .Files}}<tr>
           <td>{{.Name|icon}}  <a name="{{.Name|hash}}" href="{{.Url|string}}">{{.Name}}</a></td>
-          <td>{{.Size}}</td>
+          <td>{{.Size|size}}</td>
           <td>
 <div class="dropdown">
   <button class="btn btn-secondary dropdown-toggle" type="button" id="{{.Name|hash}}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -154,7 +155,7 @@ type Page struct {
 type PageFile struct {
 	Name    string
 	Url     url.URL
-	Size    string
+	Size    uint64
 	LastMod string
 	ModTime time.Time
 }
@@ -167,6 +168,9 @@ var tmpFundMap = template.FuncMap{
 	"time":          prettyTime,
 	"icon":          getIcon,
 	"hash":          hash,
+	"size": func(i uint64) template.HTML {
+		return template.HTML(humanize.IBytes(i))
+	},
 }
 
 func tmpString(i interface{}) template.HTML {
@@ -244,8 +248,9 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	if doPhoto == "1" {
 		v.Del("photo")
 		r.URL.RawQuery = v.Encode()
-		mkphoto(filedir)
-		http.Redirect(w, r, r.URL.String(), 302)
+		renderPhoto(w, r, filedir)
+		// 		mkphoto(filedir)
+		// 		http.Redirect(w, r, r.URL.String(), 302)
 		return
 	}
 
@@ -304,9 +309,9 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	case "size":
 		sort.Slice(dirs, func(i, j int) bool {
 			if desc == "0" {
-				return dirs[i].Size() < dirs[j].Size()
+				return dirSize(filepath.Join(filedir, dirs[i].Name())) < dirSize(filepath.Join(filedir, dirs[j].Name()))
 			}
-			return dirs[i].Size() > dirs[j].Size()
+			return dirSize(filepath.Join(filedir, dirs[i].Name())) > dirSize(filepath.Join(filedir, dirs[j].Name()))
 		})
 	default:
 		sort.Slice(dirs, func(i, j int) bool {
@@ -325,7 +330,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			f.Name += "/"
 			f.Size = dirSize(filepath.Join(filedir, d.Name()))
 		} else {
-			f.Size = humanize.IBytes(uint64(d.Size()))
+			f.Size = uint64(d.Size())
 		}
 		u := url.URL{Path: f.Name}
 		f.Url = u
@@ -361,11 +366,12 @@ func getIcon(i interface{}) template.HTML {
 	return `<i class="fa fa-file-o" aria-hidden="true"></i>`
 }
 
-func dirSize(path string) string {
+func dirSize(path string) uint64 {
 	// 	t1 := time.Now()
 	if b, err := dirSizeCache.Get([]byte(path)); err == nil {
 		// 		log.Println("size HIT", path, string(b))
-		return string(b)
+		u, _ := strconv.ParseUint(string(b), 10, 64)
+		return u
 	}
 	var size uint64
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
@@ -377,8 +383,7 @@ func dirSize(path string) string {
 	if err != nil {
 		log.Println(err.Error())
 	}
-	s := humanize.IBytes(size)
-	dirSizeCache.Set([]byte(path), []byte(s), 60*30)
+	dirSizeCache.Set([]byte(path), []byte(fmt.Sprint(size)), 60*30)
 	// 	log.Println("size MISS", path, s, time.Since(t1))
-	return s
+	return size
 }

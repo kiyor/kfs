@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Wed 30 Aug 2017 12:55:28 AM UTC
+* Last Modified : Fri 01 Sep 2017 07:11:53 PM UTC
 
 * Created By : Kiyor
 
@@ -28,11 +28,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"net/url"
+	// 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
+	// 	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -88,33 +88,6 @@ type File interface {
 	io.Seeker
 	Readdir(count int) ([]os.FileInfo, error)
 	Stat() (os.FileInfo, error)
-}
-
-func dirList(w http.ResponseWriter, f http.File) {
-	dirs, err := f.Readdir(-1)
-	if err != nil {
-		// TODO: log err.Error() to the Server.ErrorLog, once it's possible
-		// for a handler to get at its Server via the ResponseWriter. See
-		// Issue 12438.
-		http.Error(w, "Error reading directory", http.StatusInternalServerError)
-		return
-	}
-	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, "<pre>\n")
-	for _, d := range dirs {
-		name := d.Name()
-		if d.IsDir() {
-			name += "/"
-		}
-		// name may contain '?' or '#', which must be escaped to remain
-		// part of the URL path, and not indicate the start of a query
-		// string or fragment.
-		url := url.URL{Path: name}
-		fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n", url.String(), htmlReplacer.Replace(name))
-	}
-	fmt.Fprintf(w, "</pre>\n")
 }
 
 // ServeContent replies to the request using the content in the

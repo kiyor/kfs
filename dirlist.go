@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Thu 31 Aug 2017 11:12:08 PM UTC
+* Last Modified : Fri 01 Sep 2017 07:22:55 PM UTC
 
 * Created By : Kiyor
 
@@ -16,8 +16,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/coocood/freecache"
 	"github.com/dustin/go-humanize"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,6 +43,8 @@ var (
 		"png":  "file-image-o",
 		"gif":  "file-image-o",
 	}
+	dirSizeCacheSize = 100 * 1024 * 1024
+	dirSizeCache     = freecache.NewCache(dirSizeCacheSize)
 )
 
 const (
@@ -225,7 +229,7 @@ func prettyTime(t time.Time) template.HTML {
 	return template.HTML("")
 }
 
-func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
+func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir string) {
 	dirs, err := f.Readdir(-1)
 	if err != nil {
 		// TODO: log err.Error() to the Server.ErrorLog, once it's possible
@@ -240,7 +244,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 	if doPhoto == "1" {
 		v.Del("photo")
 		r.URL.RawQuery = v.Encode()
-		mkphoto(dir)
+		mkphoto(filedir)
 		http.Redirect(w, r, r.URL.String(), 302)
 		return
 	}
@@ -257,11 +261,6 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 				return
 			}
 			if strings.Contains(v.Name(), key) {
-				// 			b, err := filepath.Match(v.Name(), key)
-				// 			if err != nil {
-				// 				log.Println(err.Error())
-				// 			}
-				// 			if b {
 				list = append(list, v)
 			}
 		}
@@ -291,8 +290,6 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 		default:
 			v.Set("desc", "1")
 		}
-		// 		r.URL.RawQuery = v.Encode()
-		// 		page.Urls[t] = r.url.string()
 		page.Urls[t] = "?" + v.Encode()
 	}
 
@@ -326,15 +323,12 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, dir string) {
 		f.Name = d.Name()
 		if d.IsDir() {
 			f.Name += "/"
-			// 			f.Icon = `<i class="fa fa-folder-open-o" aria-hidden="true"></i>`
+			f.Size = dirSize(filepath.Join(filedir, d.Name()))
 		} else {
-			// 			f.Icon = getIcon(f.Name)
+			f.Size = humanize.IBytes(uint64(d.Size()))
 		}
-		// 		f.Name = htmlReplacer.Replace(f.Name)
 		u := url.URL{Path: f.Name}
 		f.Url = u
-		f.Size = humanize.IBytes(uint64(d.Size()))
-		// 		f.LastMod = d.ModTime().Format("01-02-2006 15:04:05")
 		f.ModTime = d.ModTime()
 
 		// name may contain '?' or '#', which must be escaped to remain
@@ -365,4 +359,26 @@ func getIcon(i interface{}) template.HTML {
 		}
 	}
 	return `<i class="fa fa-file-o" aria-hidden="true"></i>`
+}
+
+func dirSize(path string) string {
+	// 	t1 := time.Now()
+	if b, err := dirSizeCache.Get([]byte(path)); err == nil {
+		// 		log.Println("size HIT", path, string(b))
+		return string(b)
+	}
+	var size uint64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if info != nil && !info.IsDir() {
+			size += uint64(info.Size())
+		}
+		return err
+	})
+	if err != nil {
+		log.Println(err.Error())
+	}
+	s := humanize.IBytes(size)
+	dirSizeCache.Set([]byte(path), []byte(s), 60*30)
+	// 	log.Println("size MISS", path, s, time.Since(t1))
+	return s
 }

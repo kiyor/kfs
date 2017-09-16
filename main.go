@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Thu 31 Aug 2017 11:08:48 PM UTC
+* Last Modified : Thu 07 Sep 2017 01:07:06 AM UTC
 
 * Created By : Kiyor
 
@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"syscall"
@@ -31,11 +32,16 @@ var (
 	wg      = new(sync.WaitGroup)
 	listen  = flag.String("l", ":8080", "listen interface")
 	rootDir = flag.String("root", ".", "root dir")
+	trash   string
 )
 
 func init() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	trash = filepath.Join(*rootDir, "/.Trash")
+	if _, err := os.Stat(filepath.Join(*rootDir, "/.Trash")); err != nil {
+		os.Mkdir(trash, 0744)
+	}
 }
 
 func main() {

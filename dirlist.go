@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Sat 02 Sep 2017 07:11:30 AM UTC
+* Last Modified : Thu 07 Sep 2017 01:59:50 AM UTC
 
 * Created By : Kiyor
 
@@ -15,10 +15,12 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/coocood/freecache"
 	"github.com/dustin/go-humanize"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -50,7 +52,7 @@ var (
 
 const (
 	staticTemplate = `
-<html lang="en">
+<html lang="en" ng-app="listApp">
 <head>
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
@@ -74,22 +76,22 @@ const (
     }
   }
 </style>
-<body>
+<body ng-controller="listCtrl">
 
 <div class="container">
   <div class="row">
     <div class="col-1">
-      <a href="{{.Url|urlBack|string}}#{{(printf "%s/" .Title)|hash}}"><h1> &lt; </h1></a>
+	  <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
     </div>
     <div class="col-5">
-      <h1>{{.Title}}</h1>
+      <h1>[[.Title]]</h1>
     </div>
     <div class="col-2">
-      <a href={{urlSetQuery .Url "photo" "1"|string}}><button type="button" class="btn btn-secondary">PhotoGen</button></a>
+      <a href=[[urlSetQuery .Url "photo" "1"|string]]><button type="button" class="btn btn-secondary">PhotoGen</button></a>
     </div>
     <div class="col-4">
-      <form action="{{.Url|string}}" method="get" class="bd-search hidden-sm-down">
-        <input type="text" name="key" placeholder="Search..." value="{{.Key}}" autofocus>
+      <form action="[[.Url|string]]" method="get" class="bd-search hidden-sm-down">
+	    <input type="text" class="form-control" placeholder="Search..." name="key" value="[[.Key]]" autofocus>
       </form>
     </div>
   </div>
@@ -100,26 +102,51 @@ const (
     <div class="col-11">
       <table class="table table-hover">
         <tr>
-          <th><a href="{{index .Urls "name"}}">Name</a></th>
-          <th><a href="{{index .Urls "size"}}">Size</a></th> 
+          <th><a href="[[index .Urls "name"]]">Name</a></th>
+          <th><a href="[[index .Urls "size"]]">Size</a></th> 
+          <th>Tags</th>
           <th>Func</th>
-          <th><a href="{{index .Urls "lastMod"}}">LastMod</a></th>
+          <th><a href="[[index .Urls "lastMod"]]">LastMod</a></th>
         </tr>
-        {{range .Files}}<tr>
-          <td>{{.Name|icon}}  <a name="{{.Name|hash}}" href="{{.Url|string}}">{{.Name}}</a></td>
-          <td>{{.Size|size}}</td>
+        [[range .Files]]<tr[[if (index $.Meta.MetaInfo .Name).Label]] class="alert alert-[[(index $.Meta.MetaInfo .Name).Label]]"[[end]]>
+		<td>[[if (index $.Meta.MetaInfo .Name).Star]]<i class="fa fa-star" aria-hidden="true"></i>  [[end]][[.Name|icon]]  <a name="[[.Name|hash]]" href="[[.Url|string]]">[[.Name]]</a></td>
+          <td>[[.Size|size]]</td>
+		  <td>[[if (index $.Meta.MetaInfo .Name).Tags]][[range (index $.Meta.MetaInfo .Name).Tags]][[.]] [[end]][[end]]</td>
           <td>
-<div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle" type="button" id="{{.Name|hash}}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-    Func
-  </button>
-  <div class="dropdown-menu" aria-labelledby="{{.Name|hash}}">
-    <a class="dropdown-item" href="{{urlSetQuery .Url "delete" "1"|string}}">Delete</a>
-  </div>
-</div>
+		  <div class="input-group">
+		    <input type="checkbox" ng-model="enabled['[[.Name]]']"><input ng-if="enabled['[[.Name]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name]]']">
+            <div class="dropdown" ng-if="enabled['[[.Name]]']">
+              <button class="btn btn-secondary dropdown-toggle" type="button" id="[[.Name|hash]]" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                ...
+              </button>
+              <div class="dropdown-menu" aria-labelledby="[[.Name|hash]]">
+            
+			  <a style="color:red;" class="dropdown-item" href="[[urlSetQuery $.Url "delete" "1" "name" .Name|string]]">Delete</a>
+            
+            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name={{file['[[.Name]]']}}">Rename to {{file['[[.Name]]']}}</a>
+            
+            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name={{file['[[.Name]]']}}[[.Name]]">Rename to {{file['[[.Name]]']}}[[.Name]]</a>
+            
+            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name]]']}}">Rename to [[.Name]]{{file['[[.Name]]']}}</a>
+            
+            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name]]']}}">add tags {{file['[[.Name]]']}}</a>
+            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name]]']}}">update tags {{file['[[.Name]]']}}</a>
+            	<a class="dropdown-item" href="[[urlSetQuery $.Url "uncompress" "1" "name" .Name|string]]&pass={{file['[[.Name]]']}}">uncompress with pass {{file['[[.Name]]']}}</a>
+            
+            	<a class="dropdown-item" href="[[urlSetQuery $.Url "star" "1" "name" .Name|string]]"><i class="fa fa-star" aria-hidden="true"></i></a>
+
+            	<a class="dropdown-item" href="[[urlSetQuery $.Url "setlabel" "0" "name" .Name|string]]">label 0</a>
+            	<a class="dropdown-item alert alert-success" href="[[urlSetQuery $.Url "setlabel" "success" "name" .Name|string]]">label 1</a>
+            	<a class="dropdown-item alert alert-info" href="[[urlSetQuery $.Url "setlabel" "info" "name" .Name|string]]">label 2</a>
+            	<a class="dropdown-item alert alert-warning" href="[[urlSetQuery $.Url "setlabel" "warning" "name" .Name|string]]">label 3</a>
+            	<a class="dropdown-item alert alert-danger" href="[[urlSetQuery $.Url "setlabel" "danger" "name" .Name|string]]">label 4</a>
+
+              </div>
+            </div>
+		  </div>
 		  </td>
-          <td>{{.ModTime|time}}</td>
-        </tr>{{end}}
+          <td>[[.ModTime|time]]</td>
+        </tr>[[end]]
       </table>
     </div>
     <div class="col-1">
@@ -130,26 +157,38 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-      <a href="{{.Url|urlBack|string}}#{{(printf "%s/" .Title)|hash}}"><h1> &lt; </h1></a>
+	  <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
 	</div>
     <div class="col-11">
 	</div>
   </div>
 </div>
 
-
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.5/angular.min.js"></script>
+<script>
+[[.NgScript]]
+</script>
 </body>
 </html>
+`
+	ngScript = `
+angular.module("listApp", [])
+.controller("listCtrl", function($scope, $http, $location, $window, $interval) {
+	$scope.file = {};
+	$scope.enabled = {};
+})
 `
 )
 
 type Page struct {
-	Title string
-	Files []*PageFile
-	Url   url.URL
-	Urls  map[string]string
-	Key   string
-	Desc  string
+	Title    string
+	NgScript template.JS
+	Files    []*PageFile
+	Url      url.URL
+	Urls     map[string]string
+	Key      string
+	Desc     string
+	Meta     Meta
 }
 
 type PageFile struct {
@@ -158,6 +197,45 @@ type PageFile struct {
 	Size    uint64
 	LastMod string
 	ModTime time.Time
+}
+
+type Meta struct {
+	Root     string
+	MetaInfo map[string]MetaInfo
+}
+
+func (m *Meta) Get() error {
+	if m.MetaInfo == nil {
+		m.MetaInfo = make(map[string]MetaInfo)
+	}
+	metaFile := filepath.Join(m.Root, ".KFS_META")
+	b, err := ioutil.ReadFile(metaFile)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	err = json.Unmarshal(b, m)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	return nil
+}
+func (m *Meta) Write() error {
+	metaFile := filepath.Join(m.Root, ".KFS_META")
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	return ioutil.WriteFile(metaFile, b, 0644)
+}
+
+type MetaInfo struct {
+	Label  string
+	Tags   []string
+	Star   bool
+	OldLoc string
 }
 
 var tmpFundMap = template.FuncMap{
@@ -202,9 +280,15 @@ func urlCleanQuery(u url.URL) url.URL {
 	return u
 }
 
-func urlSetQuery(u url.URL, key, value string) url.URL {
+// func urlSetQuery(u url.URL, key, value string) url.URL {
+func urlSetQuery(u url.URL, kv ...string) url.URL {
+	if len(kv)%2 == 1 {
+		return u
+	}
 	v := u.Query()
-	v.Set(key, value)
+	for i := 0; i < len(kv); i += 2 {
+		v.Set(kv[i], kv[i+1])
+	}
 	u.RawQuery = v.Encode()
 	return u
 }
@@ -249,8 +333,172 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		v.Del("photo")
 		r.URL.RawQuery = v.Encode()
 		renderPhoto(w, r, filedir)
-		// 		mkphoto(filedir)
-		// 		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+
+	meta := Meta{Root: filedir}
+	var createMeta bool
+	err = meta.Get()
+	if err != nil {
+		createMeta = true
+	}
+
+	doSetLabel := v.Get("setlabel")
+	if len(doSetLabel) != 0 {
+		name := v.Get("name")
+		m, ok := meta.MetaInfo[name]
+		if !ok {
+			m = MetaInfo{}
+		}
+		if doSetLabel != "0" {
+			m.Label = doSetLabel
+		} else {
+			m.Label = ""
+		}
+		meta.MetaInfo[name] = m
+		meta.Write()
+		v.Del("setlabel")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = hash(name)
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+
+	doStar := v.Get("star")
+	if len(doStar) != 0 {
+		name := v.Get("name")
+		m, ok := meta.MetaInfo[name]
+		if !ok {
+			m = MetaInfo{}
+		}
+		if m.Star {
+			m.Star = false
+		} else {
+			m.Star = true
+		}
+		meta.MetaInfo[name] = m
+		meta.Write()
+		v.Del("star")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = hash(name)
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+	doDelete := v.Get("delete")
+	if len(doDelete) != 0 {
+		oldname := v.Get("name")
+		newname := oldname
+		_, err := os.Stat(filepath.Join(trash, newname))
+		var i int
+		for err == nil {
+			n := oldname
+			if strings.HasSuffix(n, "/") {
+				n = n[:len(n)-1]
+			}
+			newname = fmt.Sprintf("%s_%d", n, i)
+			_, err = os.Stat(filepath.Join(trash, newname))
+			i++
+		}
+		if err != nil {
+			log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trash, newname))
+			os.Rename(filepath.Join(filedir, oldname), filepath.Join(trash, newname))
+		}
+		m, ok := meta.MetaInfo[oldname]
+		if ok {
+			delete(meta.MetaInfo, oldname)
+		}
+		meta.Write()
+
+		m2 := Meta{Root: trash}
+		m2.Get()
+		m.OldLoc = filepath.Join(filedir, oldname)
+		m2.MetaInfo[newname] = m
+		m2.Write()
+
+		v.Del("delete")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = ""
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+	doAddTags := v.Get("addtags")
+	if len(doAddTags) != 0 {
+		name := v.Get("name")
+		m, ok := meta.MetaInfo[name]
+		if !ok {
+			m = MetaInfo{}
+		}
+		for _, v := range strings.Split(v.Get("tags"), " ") {
+			v = strings.Trim(v, " ")
+			v = strings.ToLower(v)
+			add := true
+			for _, exist := range m.Tags {
+				if v == exist {
+					add = false
+				}
+			}
+			if add {
+				m.Tags = append(m.Tags, v)
+			}
+		}
+		sort.Strings(m.Tags)
+		meta.MetaInfo[name] = m
+		meta.Write()
+		v.Del("addtags")
+		v.Del("tags")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = hash(name)
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+	doUpdateTags := v.Get("updatetags")
+	if len(doUpdateTags) != 0 {
+		name := v.Get("name")
+		m, ok := meta.MetaInfo[name]
+		if !ok {
+			m = MetaInfo{}
+		}
+		m.Tags = []string{}
+		for _, v := range strings.Split(v.Get("tags"), " ") {
+			v = strings.Trim(v, " ")
+			v = strings.ToLower(v)
+			add := true
+			for _, exist := range m.Tags {
+				if v == exist {
+					add = false
+				}
+			}
+			if add {
+				m.Tags = append(m.Tags, v)
+			}
+		}
+		sort.Strings(m.Tags)
+		meta.MetaInfo[name] = m
+		meta.Write()
+		v.Del("updatetags")
+		v.Del("tags")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = hash(name)
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+
+	doUncompress := v.Get("uncompress")
+	if len(doUncompress) != 0 {
+		name := v.Get("name")
+		pass := v.Get("pass")
+		uncompress(filedir, name, pass)
+		v.Del("uncompress")
+		v.Del("name")
+		v.Del("pass")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = hash(name)
+		http.Redirect(w, r, r.URL.String(), 302)
 		return
 	}
 
@@ -280,12 +528,10 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	if r.URL.Path == "/" {
 		page.Title = "/"
 	}
+	page.NgScript = ngScript
 	page.Url = *r.URL
 	page.Urls = make(map[string]string)
 	page.Key = key
-	// 	v.Set("photo", "1")
-	// 	r.URL.RawQuery = v.Encode()
-	// 	page.UrlPhoto = r.URL.String()
 
 	for _, t := range []string{"name", "size", "lastMod"} {
 		v.Set("by", t)
@@ -322,8 +568,18 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		})
 	}
 
+	//
+	// 	metaFile := filepath.Join(filedir, ".KFS_META")
+	page.Meta = meta
+	// 	meta := Meta{MetaInfo: make(map[string]MetaInfo)}
+	// 	b, err := ioutil.ReadFile(metaFile)
+	// 	json.Unmarshal(b, meta.MetaInfo)
+	//
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	for _, d := range dirs {
+		if d.Name() == ".KFS_META" {
+			continue
+		}
 		var f PageFile
 		f.Name = d.Name()
 		if d.IsDir() {
@@ -342,7 +598,15 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		// 		url := url.URL{Path: name}
 		page.Files = append(page.Files, &f)
 	}
-	tmpl, err := template.New("page").Funcs(tmpFundMap).Parse(staticTemplate)
+	if createMeta {
+		meta.Root = filedir
+		for _, v := range page.Files {
+			meta.MetaInfo[v.Name] = MetaInfo{}
+		}
+		b, _ := json.MarshalIndent(meta, "", "  ")
+		ioutil.WriteFile(filepath.Join(meta.Root, ".KFS_META"), b, 0644)
+	}
+	tmpl, err := template.New("page").Funcs(tmpFundMap).Delims(`[[`, `]]`).Parse(staticTemplate)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

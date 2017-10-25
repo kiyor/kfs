@@ -1,0 +1,10 @@
+version: '3.3'
+services:
+  kfs:
+    container_name: kfs
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    restart: always

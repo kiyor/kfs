@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Thu 07 Sep 2017 01:59:50 AM UTC
+* Last Modified : Wed 25 Oct 2017 10:33:31 PM UTC
 
 * Created By : Kiyor
 
@@ -55,6 +55,7 @@ const (
 <html lang="en" ng-app="listApp">
 <head>
 <meta charset="UTF-8">
+<meta name="referrer" content="none">
 <meta name="google" content="notranslate">
 <meta http-equiv="Content-Language" content="en">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">

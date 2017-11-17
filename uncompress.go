@@ -6,7 +6,7 @@
 
 * Creation Date : 09-05-2017
 
-* Last Modified : Wed 06 Sep 2017 05:14:27 AM UTC
+* Last Modified : Fri 17 Nov 2017 11:21:16 AM UTC
 
 * Created By : Kiyor
 
@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func uncompress(dir, file, pass string) error {
@@ -39,7 +40,11 @@ func uncompress(dir, file, pass string) error {
 		if len(pass) > 0 {
 			putpass = fmt.Sprintf(`-p%s `, pass)
 		}
-		cmd += fmt.Sprintf(`mkdir "%s" && yes|unrar %sx "%s" "%s"`, name, putpass, file, name)
+		if strings.Contains(name, "part1") {
+			cmd = fmt.Sprintf(`unrar %sx "%s"`, putpass, name)
+		} else {
+			cmd += fmt.Sprintf(`mkdir "%s" && yes|unrar %sx "%s" "%s"`, name, putpass, file, name)
+		}
 	default:
 		log.Println("not support")
 	}

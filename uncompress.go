@@ -6,7 +6,7 @@
 
 * Creation Date : 09-05-2017
 
-* Last Modified : Fri 17 Nov 2017 11:27:36 AM UTC
+* Last Modified : Fri 17 Nov 2017 11:31:29 AM UTC
 
 * Created By : Kiyor
 
@@ -41,7 +41,7 @@ func uncompress(dir, file, pass string) error {
 			putpass = fmt.Sprintf(`-p%s `, pass)
 		}
 		if strings.Contains(name, "part1") {
-			cmd = fmt.Sprintf(`unrar %sx "%s"`, putpass, file)
+			cmd += fmt.Sprintf(`unrar %sx "%s"`, putpass, file)
 		} else {
 			cmd += fmt.Sprintf(`mkdir "%s" && yes|unrar %sx "%s" "%s"`, name, putpass, file, name)
 		}

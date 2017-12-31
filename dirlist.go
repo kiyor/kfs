@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Wed 25 Oct 2017 10:33:31 PM UTC
+* Last Modified : Sun 31 Dec 2017 11:32:38 PM UTC
 
 * Created By : Kiyor
 
@@ -461,6 +461,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		name := v.Get("name")
 		m, ok := meta.MetaInfo[name]
 		if !ok {
+			log.Println("init", name, "metainfo")
 			m = MetaInfo{}
 		}
 		m.Tags = []string{}
@@ -479,6 +480,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		}
 		sort.Strings(m.Tags)
 		meta.MetaInfo[name] = m
+		log.Println(name, meta.MetaInfo[name])
 		meta.Write()
 		v.Del("updatetags")
 		v.Del("tags")

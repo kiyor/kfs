@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Sun 31 Dec 2017 11:32:38 PM UTC
+* Last Modified : Sun 31 Dec 2017 11:43:04 PM UTC
 
 * Created By : Kiyor
 
@@ -479,6 +479,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			}
 		}
 		sort.Strings(m.Tags)
+		log.Println(name, m)
 		meta.MetaInfo[name] = m
 		log.Println(name, meta.MetaInfo[name])
 		meta.Write()

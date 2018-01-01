@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Mon 01 Jan 2018 12:02:08 AM UTC
+* Last Modified : Mon 01 Jan 2018 12:04:26 AM UTC
 
 * Created By : Kiyor
 
@@ -115,7 +115,7 @@ const (
 		  <td>[[if (index $.Meta.MetaInfo .Name).Tags]][[range (index $.Meta.MetaInfo .Name).Tags]][[.]] [[end]][[end]]</td>
           <td>
 		  <div class="input-group">
-		    <input type="checkbox" ng-model="enabled['[[.Name|hash]]']"><input ng-if="enabled['[[.Name|hash]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name]]']">
+		    <input type="checkbox" ng-model="enabled['[[.Name|hash]]']"><input ng-if="enabled['[[.Name|hash]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name|hash]]']">
             <div class="dropdown" ng-if="enabled['[[.Name|hash]]']">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="[[.Name|hash]]" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 ...

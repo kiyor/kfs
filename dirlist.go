@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Mon 01 Jan 2018 12:04:26 AM UTC
+* Last Modified : Mon 01 Jan 2018 12:08:21 AM UTC
 
 * Created By : Kiyor
 
@@ -464,17 +464,19 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			m = MetaInfo{}
 		}
 		m.Tags = []string{}
-		for _, v := range strings.Split(v.Get("tags"), " ") {
-			v = strings.Trim(v, " ")
-			v = strings.ToLower(v)
-			add := true
-			for _, exist := range m.Tags {
-				if v == exist {
-					add = false
+		if v.Get("tags") != "-" {
+			for _, v := range strings.Split(v.Get("tags"), " ") {
+				v = strings.Trim(v, " ")
+				v = strings.ToLower(v)
+				add := true
+				for _, exist := range m.Tags {
+					if v == exist {
+						add = false
+					}
 				}
-			}
-			if add {
-				m.Tags = append(m.Tags, v)
+				if add {
+					m.Tags = append(m.Tags, v)
+				}
 			}
 		}
 		sort.Strings(m.Tags)

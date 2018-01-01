@@ -6,7 +6,7 @@
 
 * Creation Date : 08-30-2017
 
-* Last Modified : Wed 30 Aug 2017 02:36:34 AM UTC
+* Last Modified : Mon 01 Jan 2018 12:05:42 AM UTC
 
 * Created By : Kiyor
 
@@ -23,5 +23,5 @@ func hash(text string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(text))
 	s := hex.EncodeToString(hasher.Sum(nil))
-	return s[:6]
+	return s[:8]
 }

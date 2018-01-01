@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Sun 31 Dec 2017 11:43:04 PM UTC
+* Last Modified : Mon 01 Jan 2018 12:02:08 AM UTC
 
 * Created By : Kiyor
 
@@ -115,8 +115,8 @@ const (
 		  <td>[[if (index $.Meta.MetaInfo .Name).Tags]][[range (index $.Meta.MetaInfo .Name).Tags]][[.]] [[end]][[end]]</td>
           <td>
 		  <div class="input-group">
-		    <input type="checkbox" ng-model="enabled['[[.Name]]']"><input ng-if="enabled['[[.Name]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name]]']">
-            <div class="dropdown" ng-if="enabled['[[.Name]]']">
+		    <input type="checkbox" ng-model="enabled['[[.Name|hash]]']"><input ng-if="enabled['[[.Name|hash]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name]]']">
+            <div class="dropdown" ng-if="enabled['[[.Name|hash]]']">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="[[.Name|hash]]" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 ...
               </button>
@@ -124,15 +124,15 @@ const (
             
 			  <a style="color:red;" class="dropdown-item" href="[[urlSetQuery $.Url "delete" "1" "name" .Name|string]]">Delete</a>
             
-            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name={{file['[[.Name]]']}}">Rename to {{file['[[.Name]]']}}</a>
+            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}">Rename to {{file['[[.Name|hash]]']}}</a>
             
-            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name={{file['[[.Name]]']}}[[.Name]]">Rename to {{file['[[.Name]]']}}[[.Name]]</a>
+            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}[[.Name]]">Rename to {{file['[[.Name|hash]]']}}[[.Name]]</a>
             
-            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name]]']}}">Rename to [[.Name]]{{file['[[.Name]]']}}</a>
+            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name|hash]]']}}">Rename to [[.Name]]{{file['[[.Name|hash]]']}}</a>
             
-            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name]]']}}">add tags {{file['[[.Name]]']}}</a>
-            	<a class="dropdown-item" ng-if="file['[[.Name]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name]]']}}">update tags {{file['[[.Name]]']}}</a>
-            	<a class="dropdown-item" href="[[urlSetQuery $.Url "uncompress" "1" "name" .Name|string]]&pass={{file['[[.Name]]']}}">uncompress with pass {{file['[[.Name]]']}}</a>
+            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">add tags {{file['[[.Name|hash]]']}}</a>
+            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">update tags {{file['[[.Name|hash]]']}}</a>
+            	<a class="dropdown-item" href="[[urlSetQuery $.Url "uncompress" "1" "name" .Name|string]]&pass={{file['[[.Name|hash]]']}}">uncompress with pass {{file['[[.Name|hash]]']}}</a>
             
             	<a class="dropdown-item" href="[[urlSetQuery $.Url "star" "1" "name" .Name|string]]"><i class="fa fa-star" aria-hidden="true"></i></a>
 
@@ -461,7 +461,6 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		name := v.Get("name")
 		m, ok := meta.MetaInfo[name]
 		if !ok {
-			log.Println("init", name, "metainfo")
 			m = MetaInfo{}
 		}
 		m.Tags = []string{}
@@ -479,9 +478,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			}
 		}
 		sort.Strings(m.Tags)
-		log.Println(name, m)
 		meta.MetaInfo[name] = m
-		log.Println(name, meta.MetaInfo[name])
 		meta.Write()
 		v.Del("updatetags")
 		v.Del("tags")

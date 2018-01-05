@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Fri 05 Jan 2018 01:01:10 AM UTC
+* Last Modified : Fri 05 Jan 2018 01:16:08 AM UTC
 
 * Created By : Kiyor
 
@@ -35,7 +35,7 @@ var (
 	wg        = new(sync.WaitGroup)
 	listen    = flag.String("l", ":8080", "listen interface")
 	rootDir   = flag.String("root", ".", "root dir")
-	gzipTypes = flag.String("gzip-types", "text/plain text/css text/javascript text/xml application/json application/javascript application/x-javascript application/xml application/atom+xml application/rss+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype font/x-woff", "gzip type")
+	gzipTypes = flag.String("gzip-types", "text/html text/plain text/css text/javascript text/xml application/json application/javascript application/x-javascript application/xml application/atom+xml application/rss+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype font/x-woff", "gzip type")
 	trash     string
 )
 

@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Thu 07 Sep 2017 01:07:06 AM UTC
+* Last Modified : Fri 05 Jan 2018 01:01:10 AM UTC
 
 * Created By : Kiyor
 
@@ -16,23 +16,27 @@ package main
 
 import (
 	// 	"fmt"
+	"compress/gzip"
 	"flag"
+	"github.com/NYTimes/gziphandler"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 )
 
 var (
-	stop    bool
-	wg      = new(sync.WaitGroup)
-	listen  = flag.String("l", ":8080", "listen interface")
-	rootDir = flag.String("root", ".", "root dir")
-	trash   string
+	stop      bool
+	wg        = new(sync.WaitGroup)
+	listen    = flag.String("l", ":8080", "listen interface")
+	rootDir   = flag.String("root", ".", "root dir")
+	gzipTypes = flag.String("gzip-types", "text/plain text/css text/javascript text/xml application/json application/javascript application/x-javascript application/xml application/atom+xml application/rss+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype font/x-woff", "gzip type")
+	trash     string
 )
 
 func init() {
@@ -69,10 +73,19 @@ func main() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
-	mux.Handle("/", LogHandler(handler))
+	mux.Handle("/", handler)
 	log.Println("Listen:", *listen, "Root:", *rootDir)
 	go func() {
-		err := http.ListenAndServe(*listen, mux)
+		typ := strings.Split(*gzipTypes, " ")
+		for _, v := range typ {
+			typ = append(typ, v+"; charset=utf-8")
+		}
+		gzipHandler, err := gziphandler.GzipHandlerWithOpts(gziphandler.MinSize(512), gziphandler.CompressionLevel(gzip.DefaultCompression), gziphandler.ContentTypes(typ))
+		if err != nil {
+			log.Println(err.Error())
+			os.Exit(1)
+		}
+		err = http.ListenAndServe(*listen, LogHandler(gzipHandler(mux)))
 		if err != nil {
 			log.Println(err.Error())
 			os.Exit(1)

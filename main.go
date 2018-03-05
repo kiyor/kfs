@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Mon 05 Mar 2018 11:09:25 AM UTC
+* Last Modified : Mon 05 Mar 2018 11:17:27 AM UTC
 
 * Created By : Kiyor
 
@@ -52,13 +52,16 @@ func init() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	trashPath = filepath.Join(*rootDir, "/.Trash")
-	if _, err := os.Stat(filepath.Join(*rootDir, "/.Trash")); err != nil {
+	crtPath = filepath.Join(*rootDir, KFS_CRT)
+	keyPath = filepath.Join(*rootDir, KFS_KEY)
+	if _, err := os.Stat(trashPath); err != nil {
 		os.Mkdir(trashPath, 0744)
 	}
-	log.Println("checking cert", filepath.Join(*rootDir, KFS_CRT), filepath.Join(*rootDir, KFS_KEY))
-	if _, err := os.Stat(filepath.Join(*rootDir, KFS_CRT)); err == nil {
-		if _, err = os.Stat(filepath.Join(*rootDir, KFS_KEY)); err == nil {
+	log.Println("checking cert", crtPath, keyPath)
+	if _, err := os.Stat(crtPath); err == nil {
+		if _, err = os.Stat(keyPath); err == nil {
 			enableTLS = true
+			log.Println("cert exist")
 		}
 	}
 }

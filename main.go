@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Mon 05 Mar 2018 10:57:46 AM UTC
+* Last Modified : Mon 05 Mar 2018 11:09:25 AM UTC
 
 * Created By : Kiyor
 
@@ -55,6 +55,7 @@ func init() {
 	if _, err := os.Stat(filepath.Join(*rootDir, "/.Trash")); err != nil {
 		os.Mkdir(trashPath, 0744)
 	}
+	log.Println("checking cert", filepath.Join(*rootDir, KFS_CRT), filepath.Join(*rootDir, KFS_KEY))
 	if _, err := os.Stat(filepath.Join(*rootDir, KFS_CRT)); err == nil {
 		if _, err = os.Stat(filepath.Join(*rootDir, KFS_KEY)); err == nil {
 			enableTLS = true

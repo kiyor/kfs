@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Mon 01 Jan 2018 12:08:21 AM UTC
+* Last Modified : Mon 05 Mar 2018 10:58:38 AM UTC
 
 * Created By : Kiyor
 
@@ -391,7 +391,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	if len(doDelete) != 0 {
 		oldname := v.Get("name")
 		newname := oldname
-		_, err := os.Stat(filepath.Join(trash, newname))
+		_, err := os.Stat(filepath.Join(trashPath, newname))
 		var i int
 		for err == nil {
 			n := oldname
@@ -399,12 +399,12 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 				n = n[:len(n)-1]
 			}
 			newname = fmt.Sprintf("%s_%d", n, i)
-			_, err = os.Stat(filepath.Join(trash, newname))
+			_, err = os.Stat(filepath.Join(trashPath, newname))
 			i++
 		}
 		if err != nil {
-			log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trash, newname))
-			os.Rename(filepath.Join(filedir, oldname), filepath.Join(trash, newname))
+			log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
+			os.Rename(filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
 		}
 		m, ok := meta.MetaInfo[oldname]
 		if ok {
@@ -412,7 +412,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		}
 		meta.Write()
 
-		m2 := Meta{Root: trash}
+		m2 := Meta{Root: trashPath}
 		m2.Get()
 		m.OldLoc = filepath.Join(filedir, oldname)
 		m2.MetaInfo[newname] = m

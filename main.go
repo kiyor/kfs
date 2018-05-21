@@ -6,7 +6,7 @@
 
 * Creation Date : 08-27-2017
 
-* Last Modified : Mon 05 Mar 2018 11:17:27 AM UTC
+* Last Modified : Mon 21 May 2018 04:19:32 AM UTC
 
 * Created By : Kiyor
 
@@ -15,12 +15,9 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 package main
 
 import (
-	// 	"fmt"
 	"compress/gzip"
 	"flag"
 	"github.com/NYTimes/gziphandler"
-	// 	quic "github.com/lucas-clemente/quic-go"
-	// 	"github.com/lucas-clemente/quic-go/h2quic"
 	"log"
 	"net/http"
 	"os"

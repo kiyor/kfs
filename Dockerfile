@@ -7,5 +7,7 @@ RUN go get && \
 FROM alpine
 WORKDIR /root
 COPY --from=builder /go/src/github.com/kiyor/kfs/kfs .
+COPY .kfs.crt .
+COPY .kfs.key .
 EXPOSE 8080 8081
 ENTRYPOINT ["./kfs"]

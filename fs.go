@@ -6,7 +6,7 @@
 
 * Creation Date : 08-23-2017
 
-* Last Modified : Fri 01 Sep 2017 07:11:53 PM UTC
+* Last Modified : Mon 21 May 2018 04:20:39 AM UTC
 
 * Created By : Kiyor
 
@@ -280,11 +280,13 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 	w.WriteHeader(code)
 
 	if r.Method != "HEAD" {
-		// 		io.CopyN(w, sendContent, sendSize)
+		io.CopyN(w, sendContent, sendSize)
 
-		bufp := copyBufPool.Get().(*[]byte)
-		defer copyBufPool.Put(bufp)
-		io.CopyBuffer(w, sendContent, *bufp)
+		/*
+			bufp := copyBufPool.Get().(*[]byte)
+			defer copyBufPool.Put(bufp)
+			io.CopyBuffer(w, sendContent, *bufp)
+		*/
 
 	}
 }

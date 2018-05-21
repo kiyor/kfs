@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -35,8 +36,24 @@ import (
 	// 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+var copyBufPool = sync.Pool{
+	New: func() interface{} {
+		b := make([]byte, 32*1024)
+		return &b
+	},
+}
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
+
+var mimeOverwrite map[string]string = map[string]string{
+	".mov": "video/mp4",
+}
 
 // A Dir implements FileSystem using the native file system restricted to a
 // specific directory tree.
@@ -159,6 +176,9 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 	var ctype string
 	if !haveType {
 		ctype = mime.TypeByExtension(filepath.Ext(name))
+		if val, ok := mimeOverwrite[filepath.Ext(name)]; ok {
+			ctype = val
+		}
 		if ctype == "" {
 			// read a chunk to decide between utf-8 text and binary
 			var buf [sniffLen]byte
@@ -260,7 +280,12 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 	w.WriteHeader(code)
 
 	if r.Method != "HEAD" {
-		io.CopyN(w, sendContent, sendSize)
+		// 		io.CopyN(w, sendContent, sendSize)
+
+		bufp := copyBufPool.Get().(*[]byte)
+		defer copyBufPool.Put(bufp)
+		io.CopyBuffer(w, sendContent, *bufp)
+
 	}
 }
 

@@ -50,7 +50,12 @@ func LogHandler(next http.Handler) http.Handler {
 		r = r.WithContext(ctx)
 		next.ServeHTTP(&writer, r)
 
-		res := fmt.Sprintf("%v %v %v %v %v %v", r.RemoteAddr, writer.status, writer.length, r.Method, r.Host+r.RequestURI, time.Since(t1))
+		rang := r.Header.Get("Range")
+		if len(rang) == 0 {
+			rang = "-"
+		}
+
+		res := fmt.Sprintf("%v %v %v %v %v %v %v", r.RemoteAddr, writer.status, writer.length, r.Method, r.Host+r.RequestURI, rang, time.Since(t1))
 		log.Println(res)
 
 	})

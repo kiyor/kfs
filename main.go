@@ -20,7 +20,7 @@ import (
 	"flag"
 	"github.com/NYTimes/gziphandler"
 	// 	quic "github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/h2quic"
+	// 	"github.com/lucas-clemente/quic-go/h2quic"
 	"log"
 	"net/http"
 	"os"
@@ -30,11 +30,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-)
-
-const (
-	KFS_CRT = "/.kfs.crt"
-	KFS_KEY = "/.kfs.key"
 )
 
 var (
@@ -52,8 +47,6 @@ func init() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	trashPath = filepath.Join(*rootDir, "/.Trash")
-	crtPath = filepath.Join(*rootDir, KFS_CRT)
-	keyPath = filepath.Join(*rootDir, KFS_KEY)
 	if _, err := os.Stat(trashPath); err != nil {
 		os.Mkdir(trashPath, 0744)
 	}
@@ -78,14 +71,14 @@ func main() {
 		wg.Add(1)
 		defer wg.Done()
 
-		if req.URL.Path != KFS_CRT && req.URL.Path != KFS_KEY {
-			w.Header().Add("Connection", "Keep-Alive")
-			w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
-			if req.Method == "GET" {
-				f := &fileHandler{Dir(*rootDir)}
-				f.ServeHTTP(w, req)
-			}
+		// 		if req.URL.Path != KFS_CRT && req.URL.Path != KFS_KEY {
+		w.Header().Add("Connection", "Keep-Alive")
+		w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
+		if req.Method == "GET" {
+			f := &fileHandler{Dir(*rootDir)}
+			f.ServeHTTP(w, req)
 		}
+		// 		}
 	})
 
 	sig := make(chan os.Signal)
@@ -111,13 +104,15 @@ func main() {
 			log.Println(err.Error())
 			os.Exit(1)
 		}
-		if enableTLS {
-			err = h2quic.ListenAndServeQUIC(*listen, crtPath, keyPath, LogHandler(gzipHandler(mux)))
-			if err != nil {
-				log.Println(err.Error())
-				os.Exit(1)
+		/*
+			if enableTLS {
+				err = h2quic.ListenAndServeQUIC(*listen, crtPath, keyPath, LogHandler(gzipHandler(mux)))
+				if err != nil {
+					log.Println(err.Error())
+					os.Exit(1)
+				}
 			}
-		}
+		*/
 	}()
 
 forever:

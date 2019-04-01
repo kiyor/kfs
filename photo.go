@@ -18,14 +18,15 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	minio "github.com/minio/minio-go"
 	"html/template"
 	"io/ioutil"
-	// 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var goodExt = []string{".jpg", ".png", ".gif", ".jpeg"}
@@ -129,10 +130,15 @@ func (images Images) Exec() string {
 
 func (images Images) List() template.JS {
 	var out string
-	for _, v := range images.Images {
-		// 		v = Image(strings.Replace(string(v), " ", "%20", -1))
-		s := (&url.URL{Path: string(v)}).String()
-		out += fmt.Sprintf("{url:\"%s\"},", s)
+	for _, v_ := range images.Images {
+		v := string(v_)
+		if *s3proxy {
+			u, _ := s3client.PresignedGetObject(*s3bucket, v, 24*time.Hour, url.Values{})
+			out += fmt.Sprintf("{url:\"%s\"},", u.String())
+		} else {
+			s := (&url.URL{Path: v}).String()
+			out += fmt.Sprintf("{url:\"%s\"},", s)
+		}
 	}
 	if len(out) > 0 {
 		return template.JS(out[:len(out)-1])
@@ -150,26 +156,51 @@ func init() {
 
 func renderPhoto(w http.ResponseWriter, r *http.Request, dir string) {
 	var images Images
-	abs, _ := filepath.Abs(dir)
-	images.Title = filepath.Base(abs)
-	fs := readDir(dir)
-	if len(fs) == 0 {
-		http.Redirect(w, r, r.URL.String(), 302)
-		return
-	}
-	for _, f := range fs {
-		images.Images = append(images.Images, Image(f.Name()))
-	}
-	f := template.FuncMap{
-		"imageslist": imagesList,
-	}
-	t, err := template.New("index").Funcs(f).Parse(index)
-	if err != nil {
-		fmt.Fprintln(w, err.Error())
-	}
-	err = t.Execute(w, images)
-	if err != nil {
-		fmt.Fprintln(w, err.Error())
+
+	if *s3proxy {
+		images.Title = filepath.Base(dir)
+		fs := readDirS3(dir)
+		if len(fs) == 0 {
+			http.Redirect(w, r, r.URL.String(), 302)
+			return
+		}
+		for _, f := range fs {
+			images.Images = append(images.Images, Image(f.Key))
+		}
+		f := template.FuncMap{
+			"imageslist": imagesList,
+		}
+		t, err := template.New("index").Funcs(f).Parse(index)
+		if err != nil {
+			fmt.Fprintln(w, err.Error())
+		}
+		err = t.Execute(w, images)
+		if err != nil {
+			fmt.Fprintln(w, err.Error())
+		}
+
+	} else {
+		abs, _ := filepath.Abs(dir)
+		images.Title = filepath.Base(abs)
+		fs := readDir(dir)
+		if len(fs) == 0 {
+			http.Redirect(w, r, r.URL.String(), 302)
+			return
+		}
+		for _, f := range fs {
+			images.Images = append(images.Images, Image(f.Name()))
+		}
+		f := template.FuncMap{
+			"imageslist": imagesList,
+		}
+		t, err := template.New("index").Funcs(f).Parse(index)
+		if err != nil {
+			fmt.Fprintln(w, err.Error())
+		}
+		err = t.Execute(w, images)
+		if err != nil {
+			fmt.Fprintln(w, err.Error())
+		}
 	}
 }
 
@@ -193,6 +224,19 @@ func readDir(path string) (fs []os.FileInfo) {
 	for _, f := range files {
 		for _, ext := range goodExt {
 			if strings.ToLower(filepath.Ext(f.Name())) == ext {
+				fs = append(fs, f)
+				break
+			}
+		}
+	}
+	return
+}
+
+func readDirS3(path string) (fs []minio.ObjectInfo) {
+	files := s3client.ListObjects(*s3bucket, path, false, nil)
+	for f := range files {
+		for _, ext := range goodExt {
+			if strings.ToLower(filepath.Ext(f.Key)) == ext {
 				fs = append(fs, f)
 				break
 			}

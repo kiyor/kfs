@@ -82,17 +82,17 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-	  <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
+     <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
     </div>
     <div class="col-5">
       <h1>[[.Title]]</h1>
     </div>
     <div class="col-2">
-      <a href=[[urlSetQuery .Url "photo" "1"|string]]><button type="button" class="btn btn-secondary">PhotoGen</button></a>
+      <a target="_blank" href=[[urlSetQuery .Url "photo" "1"|string]]><button type="button" class="btn btn-secondary">PhotoGen</button></a>
     </div>
     <div class="col-4">
       <form action="[[.Url|string]]" method="get" class="bd-search hidden-sm-down">
-	    <input type="text" class="form-control" placeholder="Search..." name="key" value="[[.Key]]" autofocus>
+        <input type="text" class="form-control" placeholder="Search..." name="key" value="[[.Key]]" autofocus>
       </form>
     </div>
   </div>
@@ -109,45 +109,90 @@ const (
           <th>Func</th>
           <th><a href="[[index .Urls "lastMod"]]">LastMod</a></th>
         </tr>
+        [[if .Files]]
         [[range .Files]]<tr[[if (index $.Meta.MetaInfo .Name).Label]] class="alert alert-[[(index $.Meta.MetaInfo .Name).Label]]"[[end]]>
-		<td>[[if (index $.Meta.MetaInfo .Name).Star]]<i class="fa fa-star" aria-hidden="true"></i>  [[end]][[.Name|icon]]  <a name="[[.Name|hash]]" href="[[.Url|string]]">[[.Name]]</a></td>
+        <td>[[if (index $.Meta.MetaInfo .Name).Star]]<i class="fa fa-star" aria-hidden="true"></i>  [[end]][[.Name|icon]]  <a [[if not (dir .Url)]]target="_blank"[[end]] name="[[.Name|hash]]" href="[[.Url|string]]">[[.Name]]</a></td>
           <td>[[.Size|size]]</td>
-		  <td>[[if (index $.Meta.MetaInfo .Name).Tags]][[range (index $.Meta.MetaInfo .Name).Tags]][[.]] [[end]][[end]]</td>
+          <td>[[if (index $.Meta.MetaInfo .Name).Tags]][[range (index $.Meta.MetaInfo .Name).Tags]][[.]] [[end]][[end]]</td>
           <td>
-		  <div class="input-group">
-		    <input type="checkbox" ng-model="enabled['[[.Name|hash]]']"><input ng-if="enabled['[[.Name|hash]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name|hash]]']">
+          <div class="input-group">
+           <input type="checkbox" ng-model="enabled['[[.Name|hash]]']"><input ng-if="enabled['[[.Name|hash]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name|hash]]']">
+            <div class="dropdown" ng-if="enabled['[[.Name|hash]]']">
+              <button class="btn btn-secondary dropdown-toggle" type="button" id="[[.Name|hash]]" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                ...
+              </button>
+              <div class="dropdown-menu" aria-labelledby="[[.Name|hash]]">
+
+                <a style="color:red;" class="dropdown-item" href="[[urlSetQuery $.Url "delete" "1" "name" .Name|string]]">Delete</a>
+
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}">Rename to {{file['[[.Name|hash]]']}}</a>
+
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}[[.Name]]">Rename to {{file['[[.Name|hash]]']}}[[.Name]]</a>
+
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name|hash]]']}}">Rename to [[.Name]]{{file['[[.Name|hash]]']}}</a>
+
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">add tags {{file['[[.Name|hash]]']}}</a>
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">update tags {{file['[[.Name|hash]]']}}</a>
+                <a class="dropdown-item" href="[[urlSetQuery $.Url "uncompress" "1" "name" .Name|string]]&pass={{file['[[.Name|hash]]']}}">uncompress with pass {{file['[[.Name|hash]]']}}</a>
+
+                <a class="dropdown-item" href="[[urlSetQuery $.Url "star" "1" "name" .Name|string]]"><i class="fa fa-star" aria-hidden="true"></i></a>
+
+                <a class="dropdown-item" href="[[urlSetQuery $.Url "setlabel" "0" "name" .Name|string]]">label 0</a>
+                <a class="dropdown-item alert alert-success" href="[[urlSetQuery $.Url "setlabel" "success" "name" .Name|string]]">label 1</a>
+                <a class="dropdown-item alert alert-info" href="[[urlSetQuery $.Url "setlabel" "info" "name" .Name|string]]">label 2</a>
+                <a class="dropdown-item alert alert-warning" href="[[urlSetQuery $.Url "setlabel" "warning" "name" .Name|string]]">label 3</a>
+                <a class="dropdown-item alert alert-danger" href="[[urlSetQuery $.Url "setlabel" "danger" "name" .Name|string]]">label 4</a>
+
+              </div>
+            </div>
+            </div>
+           td>
+          <td>[[.ModTime|time]]</td>
+        </tr>[[end]]
+        [[end]]
+
+        [[if .FilesCh]]
+        [[range .FilesCh]]<tr[[if (index $.Meta.MetaInfo .Name).Label]] class="alert alert-[[(index $.Meta.MetaInfo .Name).Label]]"[[end]]>
+    <td>[[if (index $.Meta.MetaInfo .Name).Star]]<i class="fa fa-star" aria-hidden="true"></i>  [[end]][[.Name|icon]]  <a [[if not (dir .Url)]]target="_blank"[[end]] name="[[.Name|hash]]" href="[[.Url|string]]">[[.Name]]</a></td>
+          <td>[[.Size|size]]</td>
+          <td>[[if (index $.Meta.MetaInfo .Name).Tags]][[range (index $.Meta.MetaInfo .Name).Tags]][[.]] [[end]][[end]]</td>
+          <td>
+            <div class="input-group">
+              <input type="checkbox" ng-model="enabled['[[.Name|hash]]']"><input ng-if="enabled['[[.Name|hash]]']" name="input" type="text" class="form-control" ng-model="file['[[.Name|hash]]']">
             <div class="dropdown" ng-if="enabled['[[.Name|hash]]']">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="[[.Name|hash]]" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 ...
               </button>
               <div class="dropdown-menu" aria-labelledby="[[.Name|hash]]">
             
-			  <a style="color:red;" class="dropdown-item" href="[[urlSetQuery $.Url "delete" "1" "name" .Name|string]]">Delete</a>
-            
-            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}">Rename to {{file['[[.Name|hash]]']}}</a>
-            
-            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}[[.Name]]">Rename to {{file['[[.Name|hash]]']}}[[.Name]]</a>
-            
-            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name|hash]]']}}">Rename to [[.Name]]{{file['[[.Name|hash]]']}}</a>
-            
-            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">add tags {{file['[[.Name|hash]]']}}</a>
-            	<a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">update tags {{file['[[.Name|hash]]']}}</a>
-            	<a class="dropdown-item" href="[[urlSetQuery $.Url "uncompress" "1" "name" .Name|string]]&pass={{file['[[.Name|hash]]']}}">uncompress with pass {{file['[[.Name|hash]]']}}</a>
-            
-            	<a class="dropdown-item" href="[[urlSetQuery $.Url "star" "1" "name" .Name|string]]"><i class="fa fa-star" aria-hidden="true"></i></a>
-
-            	<a class="dropdown-item" href="[[urlSetQuery $.Url "setlabel" "0" "name" .Name|string]]">label 0</a>
-            	<a class="dropdown-item alert alert-success" href="[[urlSetQuery $.Url "setlabel" "success" "name" .Name|string]]">label 1</a>
-            	<a class="dropdown-item alert alert-info" href="[[urlSetQuery $.Url "setlabel" "info" "name" .Name|string]]">label 2</a>
-            	<a class="dropdown-item alert alert-warning" href="[[urlSetQuery $.Url "setlabel" "warning" "name" .Name|string]]">label 3</a>
-            	<a class="dropdown-item alert alert-danger" href="[[urlSetQuery $.Url "setlabel" "danger" "name" .Name|string]]">label 4</a>
+                <a style="color:red;" class="dropdown-item" href="[[urlSetQuery $.Url "delete" "1" "name" .Name|string]]">Delete</a>
+                
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}">Rename to {{file['[[.Name|hash]]']}}</a>
+                
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}[[.Name]]">Rename to {{file['[[.Name|hash]]']}}[[.Name]]</a>
+                
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name|hash]]']}}">Rename to [[.Name]]{{file['[[.Name|hash]]']}}</a>
+                
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">add tags {{file['[[.Name|hash]]']}}</a>
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">update tags {{file['[[.Name|hash]]']}}</a>
+                <a class="dropdown-item" href="[[urlSetQuery $.Url "uncompress" "1" "name" .Name|string]]&pass={{file['[[.Name|hash]]']}}">uncompress with pass {{file['[[.Name|hash]]']}}</a>
+                
+                <a class="dropdown-item" href="[[urlSetQuery $.Url "star" "1" "name" .Name|string]]"><i class="fa fa-star" aria-hidden="true"></i></a>
+    
+                <a class="dropdown-item" href="[[urlSetQuery $.Url "setlabel" "0" "name" .Name|string]]">label 0</a>
+                <a class="dropdown-item alert alert-success" href="[[urlSetQuery $.Url "setlabel" "success" "name" .Name|string]]">label 1</a>
+                <a class="dropdown-item alert alert-info" href="[[urlSetQuery $.Url "setlabel" "info" "name" .Name|string]]">label 2</a>
+                <a class="dropdown-item alert alert-warning" href="[[urlSetQuery $.Url "setlabel" "warning" "name" .Name|string]]">label 3</a>
+                <a class="dropdown-item alert alert-danger" href="[[urlSetQuery $.Url "setlabel" "danger" "name" .Name|string]]">label 4</a>
 
               </div>
             </div>
-		  </div>
-		  </td>
+          </div>
+          </td>
           <td>[[.ModTime|time]]</td>
         </tr>[[end]]
+        [[end]]
+
       </table>
     </div>
     <div class="col-1">
@@ -158,10 +203,10 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-	  <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
-	</div>
+      <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
+    </div>
     <div class="col-11">
-	</div>
+    </div>
   </div>
 </div>
 
@@ -185,6 +230,7 @@ type Page struct {
 	Title    string
 	NgScript template.JS
 	Files    []*PageFile
+	FilesCh  chan *PageFile
 	Url      url.URL
 	Urls     map[string]string
 	Key      string
@@ -249,6 +295,9 @@ var tmpFundMap = template.FuncMap{
 	"hash":          hash,
 	"size": func(i uint64) template.HTML {
 		return template.HTML(humanize.IBytes(i))
+	},
+	"dir": func(u *url.URL) bool {
+		return strings.HasSuffix(u.Path, "/")
 	},
 }
 
@@ -316,6 +365,102 @@ func prettyTime(t time.Time) template.HTML {
 		return template.HTML(t.Format("01-02-06"))
 	}
 	return template.HTML("")
+}
+
+func dirListProxy(w http.ResponseWriter, r *http.Request, path string) {
+	path, _ = url.PathUnescape(path)
+	path = path[1:]
+	if len(path) > 0 {
+		path += "/"
+	}
+
+	v := r.URL.Query()
+	doPhoto := v.Get("photo")
+	if doPhoto == "1" {
+		v.Del("photo")
+		r.URL.RawQuery = v.Encode()
+		renderPhoto(w, r, path)
+		return
+	}
+	doDelete := v.Get("delete")
+	if len(doDelete) != 0 {
+		name := v.Get("name")
+		key := filepath.Join(path, name)
+		if strings.HasSuffix(name, "/") {
+			log.Println(key)
+			objs := s3client.ListObjects(*s3bucket, key, true, nil)
+			// 			ch := make(chan string)
+			// 			go s3client.RemoveObjects(*s3bucket, ch)
+			for obj := range objs {
+				log.Println(obj.Key)
+				err := s3client.RemoveObject(*s3bucket, obj.Key)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				// 				ch <- obj.Key
+			}
+			err := s3client.RemoveObject(*s3bucket, key)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		} else {
+			err := s3client.RemoveObject(*s3bucket, key)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
+
+		v.Del("delete")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = ""
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+
+	fs := s3client.ListObjects(*s3bucket, path, false, nil)
+	page := new(Page)
+	page.Title = path
+	if r.URL.Path == "/" {
+		page.Title = "/"
+	}
+	page.NgScript = ngScript
+	page.Url = *r.URL
+	page.Urls = make(map[string]string)
+	page.FilesCh = make(chan *PageFile)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	go func() {
+		for d := range fs {
+			var f PageFile
+			f.Name = d.Key[len(path):]
+			// is dir
+			if strings.HasSuffix(d.Key, "/") {
+				f.ModTime = time.Now()
+				u := url.URL{Path: f.Name}
+				f.Url = u
+			} else { // is not dir
+				f.Size = uint64(d.Size)
+				f.ModTime = d.LastModified
+				ur, err := s3client.PresignedGetObject(*s3bucket, d.Key, 24*time.Hour, url.Values{})
+				if err != nil {
+					panic(err)
+				}
+				f.Url = *ur
+			}
+
+			// 		page.Files = append(page.Files, &f)
+			page.FilesCh <- &f
+		}
+		close(page.FilesCh)
+	}()
+	tmpl, err := template.New("page").Funcs(tmpFundMap).Delims(`[[`, `]]`).Parse(staticTemplate)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	err = tmpl.Execute(w, page)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir string) {

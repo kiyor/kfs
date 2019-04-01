@@ -18,10 +18,16 @@ import (
 	"compress/gzip"
 	"flag"
 	"github.com/NYTimes/gziphandler"
+	// 	"github.com/aws/aws-sdk-go/aws"
+	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/signer/v4"
+	minio "github.com/minio/minio-go"
+	"github.com/minio/minio-go/pkg/credentials"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,25 +39,42 @@ var (
 	stop                        bool
 	wg                          = new(sync.WaitGroup)
 	listen                      = flag.String("l", ":8080", "listen interface")
-	listenTLS                   = flag.String("lssl", ":8081", "listen ssl interface")
 	rootDir                     = flag.String("root", ".", "root dir")
 	gzipTypes                   = flag.String("gzip-types", "text/html text/plain text/css text/javascript text/xml application/json application/javascript application/x-javascript application/xml application/atom+xml application/rss+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype font/x-woff", "gzip type")
 	trashPath, crtPath, keyPath string
-	enableTLS                   bool
+
+	s3proxy    = flag.Bool("s3proxy", false, "use as s3 proxy, require key")
+	awsProfile = flag.String("profile", "dos", "aws profile store the key")
+	s3endpoint = flag.String("s3endpoint", "sfo2.digitaloceanspaces.com", "s3 endpoint")
+	s3region   = flag.String("region", "sfo2", "s3 region")
+	s3bucket   = flag.String("s3bucket", "dos", "s3 bucket")
+
+	s3client *minio.Client
+
+	signer *v4.Signer
 )
 
 func init() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	trashPath = filepath.Join(*rootDir, "/.Trash")
-	if _, err := os.Stat(trashPath); err != nil {
-		os.Mkdir(trashPath, 0744)
-	}
-	log.Println("checking cert", crtPath, keyPath)
-	if _, err := os.Stat(crtPath); err == nil {
-		if _, err = os.Stat(keyPath); err == nil {
-			enableTLS = true
-			log.Println("cert exist")
+	if *s3proxy {
+		cuser, err := user.Current()
+		if err != nil {
+			cuser, _ = user.LookupId("0")
+		}
+		authfile := filepath.Join(cuser.HomeDir, ".aws/credentials")
+		credential := credentials.NewFileAWSCredentials(authfile, *awsProfile)
+		s3client, err = minio.NewWithCredentials(*s3endpoint, credential, true, *s3region)
+		if err != nil {
+			panic(err)
+		}
+		awsCredential := awscredentials.NewSharedCredentials(authfile, *awsProfile)
+		signer = v4.NewSigner(awsCredential)
+		signer.DisableHeaderHoisting = true
+	} else {
+		trashPath = filepath.Join(*rootDir, "/.Trash")
+		if _, err := os.Stat(trashPath); err != nil {
+			os.Mkdir(trashPath, 0744)
 		}
 	}
 }
@@ -83,9 +106,9 @@ func main() {
 
 	mux.Handle("/", handler)
 	log.Println("Listen:", *listen, "Root:", *rootDir)
-	if enableTLS {
-		log.Println("Listen TLS:", *listenTLS, "Root:", *rootDir)
-	}
+	// 	if enableTLS {
+	// 		log.Println("Listen TLS:", *listenTLS, "Root:", *rootDir)
+	// 	}
 	go func() {
 		typ := strings.Split(*gzipTypes, " ")
 		for _, v := range typ {

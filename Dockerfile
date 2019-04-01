@@ -1,13 +1,12 @@
 FROM golang as builder
 WORKDIR /go/src/github.com/kiyor/kfs
-COPY . .
-RUN go get && \
-    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kfs .
+COPY vendor vendor
+COPY *.go ./
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kfs .
 
 FROM alpine
+RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
 WORKDIR /root
 COPY --from=builder /go/src/github.com/kiyor/kfs/kfs .
-COPY .kfs.crt .
-COPY .kfs.key .
-EXPOSE 8080 8081
+EXPOSE 8080
 ENTRYPOINT ["./kfs"]

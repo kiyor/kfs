@@ -711,7 +711,11 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		upath = "/" + upath
 		r.URL.Path = upath
 	}
-	serveFile(w, r, f.root, path.Clean(upath), true)
+	if !*s3proxy {
+		serveFile(w, r, f.root, path.Clean(upath), true)
+	} else {
+		dirListProxy(w, r, path.Clean(upath))
+	}
 }
 
 // httpRange specifies the byte range to be sent to the client.

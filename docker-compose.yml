@@ -1,11 +1,24 @@
+#version: '3.3'
+#services:
+#  kfs:
+#    container_name: kfs
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    ports:
+#      - 8080:8080
+#      - 8081:8081
+#    restart: always
 version: '3.3'
 services:
   kfs:
-    container_name: kfs
     build:
       context: .
-      dockerfile: Dockerfile
+    container_name: kfs
+    image: kiyor/kfs
+    command: -s3proxy -profile wasabi -s3endpoint s3.us-west-1.wasabisys.com -region us-west-1 -s3bucket nsio
+    volumes:
+      - "~/.aws:/root/.aws"
     ports:
-      - 8080:8080
-      - 8081:8081
+      - 8898:8080
     restart: always

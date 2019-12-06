@@ -62,10 +62,23 @@ var index = `<!DOCTYPE html>
 #topBtn:hover {
   background-color: #111;
 }
+html, body {
+  height: 100%;
+}
+
+html {
+  display: table;
+  margin: auto;
+}
+
+body {
+  display: table-cell;
+  vertical-align: middle;
+}
 </style>
 </head>
-<body style="background:#444;">
-	<div id="img_list">
+<body style="background:#444; width:640px;">
+    <div id="img_list">
 	</div>
     <button onclick="topFunction()" id="topBtn" title="Go to top">Top</button>
 	<div id="img_load" style="text-align:center;color:#AAA;"><img src="https://dev.2ns.io/wnacg/loading.gif" /><br /><span>少女讀取中...</span></div>

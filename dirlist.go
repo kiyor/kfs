@@ -433,6 +433,9 @@ func dirListProxy(w http.ResponseWriter, r *http.Request, path string) {
 		for d := range fs {
 			var f PageFile
 			f.Name = d.Key[len(path):]
+			if len(d.Key) == 0 {
+				continue
+			}
 			// is dir
 			if strings.HasSuffix(d.Key, "/") {
 				f.ModTime = time.Now()

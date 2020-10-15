@@ -82,7 +82,7 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-     <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
+     <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]" id="[[printf "%s/" .Title]]"><h1> &lt; </h1></a>
     </div>
     <div class="col-5">
       <h1>[[.Title]]</h1>
@@ -146,7 +146,7 @@ const (
               </div>
             </div>
             </div>
-           td>
+          </td>
           <td>[[.ModTime|time]]</td>
         </tr>[[end]]
         [[end]]
@@ -203,7 +203,7 @@ const (
 <div class="container">
   <div class="row">
     <div class="col-1">
-      <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]"><h1> &lt; </h1></a>
+      <a href="[[.Url|urlBack|string]]#[[(printf "%s/" .Title)|hash]]" id="[[printf "%s/" .Title]]"><h1> &lt; </h1></a>
     </div>
     <div class="col-11">
     </div>
@@ -219,9 +219,11 @@ const (
 `
 	ngScript = `
 angular.module("listApp", [])
-.controller("listCtrl", function($scope, $http, $location, $window, $interval) {
+.controller("listCtrl", function($scope, $http, $location, $window, $interval, $anchorScroll) {
 	$scope.file = {};
 	$scope.enabled = {};
+	console.log($location.hash());
+	$anchorScroll();
 })
 `
 )

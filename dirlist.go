@@ -17,8 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/coocood/freecache"
-	"github.com/dustin/go-humanize"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -30,6 +28,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/coocood/freecache"
+	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -366,7 +367,7 @@ func prettyTime(t time.Time) template.HTML {
 	default:
 		return template.HTML(t.Format("01-02-06"))
 	}
-	return template.HTML("")
+	// 	return template.HTML("")
 }
 
 func dirListProxy(w http.ResponseWriter, r *http.Request, path string) {
@@ -541,32 +542,65 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	if len(doDelete) != 0 {
 		oldname := v.Get("name")
 		newname := oldname
-		_, err := os.Stat(filepath.Join(trashPath, newname))
-		var i int
-		for err == nil {
-			n := oldname
-			if strings.HasSuffix(n, "/") {
-				n = n[:len(n)-1]
+		// inside trash delete
+		if strings.HasPrefix(filepath.Join(filedir), filepath.Join(trashPath)) {
+			_, ok := meta.MetaInfo[oldname]
+			if ok {
+				delete(meta.MetaInfo, oldname)
 			}
-			newname = fmt.Sprintf("%s_%d", n, i)
-			_, err = os.Stat(filepath.Join(trashPath, newname))
-			i++
-		}
-		if err != nil {
-			log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
-			os.Rename(filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
-		}
-		m, ok := meta.MetaInfo[oldname]
-		if ok {
-			delete(meta.MetaInfo, oldname)
-		}
-		meta.Write()
+			meta.Write()
+			go os.RemoveAll(filepath.Join(filedir, oldname))
+			log.Println("rm -rf", filepath.Join(filedir, oldname))
+		} else if filepath.Join(filedir, oldname) == filepath.Join(trashPath) { // full trash delete
+			files, err := ioutil.ReadDir(filepath.Join(trashPath))
+			if err != nil {
+				log.Println(err)
+			}
+			m := Meta{Root: trashPath}
+			m.Get()
+			for _, f := range files {
+				if f.Name() != ".KFS_META" {
+					name := f.Name()
+					if f.IsDir() {
+						name += "/"
+					}
+					_, ok := m.MetaInfo[name]
+					if ok {
+						delete(m.MetaInfo, name)
+					}
+					go os.RemoveAll(filepath.Join(trashPath, f.Name()))
+					log.Println("rm -rf", filepath.Join(trashPath, f.Name()))
+				}
+			}
+			m.Write()
+		} else {
+			_, err := os.Stat(filepath.Join(trashPath, newname))
+			var i int
+			for err == nil {
+				n := oldname
+				if strings.HasSuffix(n, "/") {
+					n = n[:len(n)-1]
+				}
+				newname = fmt.Sprintf("%s_%d", n, i)
+				_, err = os.Stat(filepath.Join(trashPath, newname))
+				i++
+			}
+			if err != nil {
+				log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
+				os.Rename(filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
+			}
+			m, ok := meta.MetaInfo[oldname]
+			if ok {
+				delete(meta.MetaInfo, oldname)
+			}
+			meta.Write()
 
-		m2 := Meta{Root: trashPath}
-		m2.Get()
-		m.OldLoc = filepath.Join(filedir, oldname)
-		m2.MetaInfo[newname] = m
-		m2.Write()
+			m2 := Meta{Root: trashPath}
+			m2.Get()
+			m.OldLoc = filepath.Join(filedir, oldname)
+			m2.MetaInfo[newname] = m
+			m2.Write()
+		}
 
 		v.Del("delete")
 		v.Del("name")

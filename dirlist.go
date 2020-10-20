@@ -254,11 +254,20 @@ type Meta struct {
 	MetaInfo map[string]MetaInfo
 }
 
-func (m *Meta) Get() error {
+func (m *Meta) init(path string) {
+	m.Root = path
+	// 	for _, v := range files {
+	// 		m.MetaInfo[v.Name] = MetaInfo{}
+	// 	}
+	b, _ := json.MarshalIndent(m, "", "  ")
+	ioutil.WriteFile(filepath.Join(m.Root, ".KFS_META"), b, 0644)
+}
+
+func (m *Meta) Get(path string) error {
 	if m.MetaInfo == nil {
 		m.MetaInfo = make(map[string]MetaInfo)
 	}
-	metaFile := filepath.Join(m.Root, ".KFS_META")
+	metaFile := filepath.Join(path, ".KFS_META")
 	b, err := ioutil.ReadFile(metaFile)
 	if err != nil {
 		log.Println(err.Error())
@@ -268,6 +277,10 @@ func (m *Meta) Get() error {
 	if err != nil {
 		log.Println(err.Error())
 		return err
+	}
+	if path != m.Root {
+		m.Root = path
+		m.Write()
 	}
 	return nil
 }
@@ -488,11 +501,10 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		return
 	}
 
-	meta := Meta{Root: filedir}
-	var createMeta bool
-	err = meta.Get()
+	meta := Meta{}
+	err = meta.Get(filedir)
 	if err != nil {
-		createMeta = true
+		meta.init(filedir)
 	}
 
 	doSetLabel := v.Get("setlabel")
@@ -556,8 +568,9 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			if err != nil {
 				log.Println(err)
 			}
-			m := Meta{Root: trashPath}
-			m.Get()
+			// 			m := Meta{Root: trashPath}
+			m := Meta{}
+			m.Get(trashPath)
 			for _, f := range files {
 				if f.Name() != ".KFS_META" {
 					name := f.Name()
@@ -591,12 +604,17 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			}
 			m, ok := meta.MetaInfo[oldname]
 			if ok {
+				log.Println("found meta info", m)
 				delete(meta.MetaInfo, oldname)
 			}
 			meta.Write()
 
-			m2 := Meta{Root: trashPath}
-			m2.Get()
+			// 			m2 := Meta{Root: trashPath}
+			m2 := Meta{}
+			err = m2.Get(trashPath)
+			if err != nil {
+				m2.init(trashPath)
+			}
 			m.OldLoc = filepath.Join(filedir, oldname)
 			m2.MetaInfo[newname] = m
 			m2.Write()
@@ -755,13 +773,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		})
 	}
 
-	//
-	// 	metaFile := filepath.Join(filedir, ".KFS_META")
 	page.Meta = meta
-	// 	meta := Meta{MetaInfo: make(map[string]MetaInfo)}
-	// 	b, err := ioutil.ReadFile(metaFile)
-	// 	json.Unmarshal(b, meta.MetaInfo)
-	//
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	for _, d := range dirs {
 		if d.Name() == ".KFS_META" {
@@ -784,14 +796,6 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		// string or fragment.
 		// 		url := url.URL{Path: name}
 		page.Files = append(page.Files, &f)
-	}
-	if createMeta {
-		meta.Root = filedir
-		for _, v := range page.Files {
-			meta.MetaInfo[v.Name] = MetaInfo{}
-		}
-		b, _ := json.MarshalIndent(meta, "", "  ")
-		ioutil.WriteFile(filepath.Join(meta.Root, ".KFS_META"), b, 0644)
 	}
 	tmpl, err := template.New("page").Funcs(tmpFundMap).Delims(`[[`, `]]`).Parse(staticTemplate)
 	if err != nil {

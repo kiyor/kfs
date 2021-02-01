@@ -17,8 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/coocood/freecache"
-	"github.com/dustin/go-humanize"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -30,6 +28,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/coocood/freecache"
+	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -666,7 +667,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 				http.Redirect(w, r, u.String(), 302)
 				return
 			}
-			if strings.Contains(v.Name(), key) {
+			if strings.Contains(strings.ToLower(v.Name()), strings.ToLower(key)) {
 				list = append(list, v)
 			}
 		}

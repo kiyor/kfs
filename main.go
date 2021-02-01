@@ -17,12 +17,10 @@ package main
 import (
 	"compress/gzip"
 	"flag"
+
 	"github.com/NYTimes/gziphandler"
+
 	// 	"github.com/aws/aws-sdk-go/aws"
-	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/signer/v4"
-	minio "github.com/minio/minio-go"
-	"github.com/minio/minio-go/pkg/credentials"
 	"log"
 	"net/http"
 	"os"
@@ -33,6 +31,11 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/signer/v4"
+	minio "github.com/minio/minio-go"
+	"github.com/minio/minio-go/pkg/credentials"
 )
 
 var (

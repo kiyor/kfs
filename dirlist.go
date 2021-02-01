@@ -126,11 +126,11 @@ const (
 
                 <a style="color:red;" class="dropdown-item" href="[[urlSetQuery $.Url "delete" "1" "name" .Name|string]]">Delete</a>
 
-                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}">Rename to {{file['[[.Name|hash]]']}}</a>
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&newname={{file['[[.Name|hash]]']}}">Rename to {{file['[[.Name|hash]]']}}</a>
 
-                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&rename={{file['[[.Name|hash]]']}}[[.Name]]">Rename to {{file['[[.Name|hash]]']}}[[.Name]]</a>
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&newname={{file['[[.Name|hash]]']}}[[.Name]]">Rename to {{file['[[.Name|hash]]']}}[[.Name]]</a>
 
-                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&name=[[.Name]]{{file['[[.Name|hash]]']}}">Rename to [[.Name]]{{file['[[.Name|hash]]']}}</a>
+                <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "rename" "1" "name" .Name|string]]&newname=[[.Name]]{{file['[[.Name|hash]]']}}">Rename to [[.Name]]{{file['[[.Name|hash]]']}}</a>
 
                 <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "addtags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">add tags {{file['[[.Name|hash]]']}}</a>
                 <a class="dropdown-item" ng-if="file['[[.Name|hash]]']" href="[[urlSetQuery $.Url "updatetags" "1" "name" .Name|string]]&tags={{file['[[.Name|hash]]']}}">update tags {{file['[[.Name|hash]]']}}</a>
@@ -604,6 +604,24 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		meta.Write()
 		v.Del("addtags")
 		v.Del("tags")
+		v.Del("name")
+		r.URL.RawQuery = v.Encode()
+		r.URL.Fragment = hash(name)
+		http.Redirect(w, r, r.URL.String(), 302)
+		return
+	}
+	doRename := v.Get("rename")
+	if len(doRename) != 0 {
+		name := v.Get("name")
+		newname := v.Get("newname")
+		m, ok := meta.Get(name)
+		os.Rename(filepath.Join(filedir, name), filepath.Join(filedir, newname))
+		if ok {
+			meta.Set(newname, m)
+			meta.Write()
+		}
+		v.Del("newname")
+		v.Del("rename")
 		v.Del("name")
 		r.URL.RawQuery = v.Encode()
 		r.URL.Fragment = hash(name)

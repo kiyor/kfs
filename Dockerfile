@@ -2,6 +2,7 @@ FROM golang:1.15 as builder
 WORKDIR /go/src/github.com/kiyor/kfs
 COPY go.mod ./
 COPY go.sum ./
+COPY lib ./lib
 COPY *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kfs .
 

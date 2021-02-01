@@ -15,7 +15,6 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/coocood/freecache"
 	"github.com/dustin/go-humanize"
+	"github.com/kiyor/kfs/lib"
 )
 
 var (
@@ -229,6 +229,10 @@ angular.module("listApp", [])
 `
 )
 
+const (
+	KFS = ".KFS_META"
+)
+
 type Page struct {
 	Title    string
 	NgScript template.JS
@@ -238,7 +242,7 @@ type Page struct {
 	Urls     map[string]string
 	Key      string
 	Desc     string
-	Meta     Meta
+	Meta     lib.Meta
 }
 
 type PageFile struct {
@@ -247,45 +251,6 @@ type PageFile struct {
 	Size    uint64
 	LastMod string
 	ModTime time.Time
-}
-
-type Meta struct {
-	Root     string
-	MetaInfo map[string]MetaInfo
-}
-
-func (m *Meta) Get() error {
-	if m.MetaInfo == nil {
-		m.MetaInfo = make(map[string]MetaInfo)
-	}
-	metaFile := filepath.Join(m.Root, ".KFS_META")
-	b, err := ioutil.ReadFile(metaFile)
-	if err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	err = json.Unmarshal(b, m)
-	if err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	return nil
-}
-func (m *Meta) Write() error {
-	metaFile := filepath.Join(m.Root, ".KFS_META")
-	b, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	return ioutil.WriteFile(metaFile, b, 0644)
-}
-
-type MetaInfo struct {
-	Label  string
-	Tags   []string
-	Star   bool
-	OldLoc string
 }
 
 var tmpFundMap = template.FuncMap{
@@ -367,7 +332,7 @@ func prettyTime(t time.Time) template.HTML {
 	default:
 		return template.HTML(t.Format("01-02-06"))
 	}
-	return template.HTML("")
+	// 	return template.HTML("")
 }
 
 func dirListProxy(w http.ResponseWriter, r *http.Request, path string) {
@@ -488,26 +453,25 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		return
 	}
 
-	meta := Meta{Root: filedir}
-	var createMeta bool
-	err = meta.Get()
-	if err != nil {
-		createMeta = true
-	}
+	meta := lib.NewMeta(filedir)
+	// 	err = meta.Load(filedir)
+	// 	if err != nil {
+	// 		meta.init(filedir)
+	// 	}
 
 	doSetLabel := v.Get("setlabel")
 	if len(doSetLabel) != 0 {
 		name := v.Get("name")
-		m, ok := meta.MetaInfo[name]
+		m, ok := meta.Get(name)
 		if !ok {
-			m = MetaInfo{}
+			m = lib.NewMetaInfo()
 		}
 		if doSetLabel != "0" {
 			m.Label = doSetLabel
 		} else {
 			m.Label = ""
 		}
-		meta.MetaInfo[name] = m
+		meta.Set(name, m)
 		meta.Write()
 		v.Del("setlabel")
 		v.Del("name")
@@ -520,16 +484,16 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	doStar := v.Get("star")
 	if len(doStar) != 0 {
 		name := v.Get("name")
-		m, ok := meta.MetaInfo[name]
+		m, ok := meta.Get(name)
 		if !ok {
-			m = MetaInfo{}
+			m = lib.NewMetaInfo()
 		}
 		if m.Star {
 			m.Star = false
 		} else {
 			m.Star = true
 		}
-		meta.MetaInfo[name] = m
+		meta.Set(name, m)
 		meta.Write()
 		v.Del("star")
 		v.Del("name")
@@ -542,32 +506,71 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	if len(doDelete) != 0 {
 		oldname := v.Get("name")
 		newname := oldname
-		_, err := os.Stat(filepath.Join(trashPath, newname))
-		var i int
-		for err == nil {
-			n := oldname
-			if strings.HasSuffix(n, "/") {
-				n = n[:len(n)-1]
+		// inside trash delete
+		if strings.HasPrefix(filepath.Join(filedir), filepath.Join(trashPath)) {
+			_, ok := meta.Get(oldname)
+			if ok {
+				meta.Del(oldname)
 			}
-			newname = fmt.Sprintf("%s_%d", n, i)
-			_, err = os.Stat(filepath.Join(trashPath, newname))
-			i++
-		}
-		if err != nil {
-			log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
-			os.Rename(filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
-		}
-		m, ok := meta.MetaInfo[oldname]
-		if ok {
-			delete(meta.MetaInfo, oldname)
-		}
-		meta.Write()
+			meta.Write()
+			go os.RemoveAll(filepath.Join(filedir, oldname))
+			log.Println("rm -rf", filepath.Join(filedir, oldname))
+		} else if filepath.Join(filedir, oldname) == filepath.Join(trashPath) { // full trash delete
+			files, err := ioutil.ReadDir(filepath.Join(trashPath))
+			if err != nil {
+				log.Println(err)
+			}
+			// 			m := Meta{Root: trashPath}
+			m := lib.NewMeta(trashPath)
+			// 			m.Load(trashPath)
+			for _, f := range files {
+				if f.Name() != KFS {
+					name := f.Name()
+					if f.IsDir() {
+						name += "/"
+					}
+					_, ok := m.Get(name)
+					if ok {
+						meta.Del(name)
+					}
+					go os.RemoveAll(filepath.Join(trashPath, f.Name()))
+					log.Println("rm -rf", filepath.Join(trashPath, f.Name()))
+				}
+			}
+			m.Write()
+		} else {
+			_, err := os.Stat(filepath.Join(trashPath, newname))
+			var i int
+			for err == nil {
+				n := oldname
+				if strings.HasSuffix(n, "/") {
+					n = n[:len(n)-1]
+				}
+				newname = fmt.Sprintf("%s_%d", n, i)
+				_, err = os.Stat(filepath.Join(trashPath, newname))
+				i++
+			}
+			if err != nil {
+				log.Println("do mv", filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
+				os.Rename(filepath.Join(filedir, oldname), filepath.Join(trashPath, newname))
+			}
+			m, ok := meta.Get(oldname)
+			if ok {
+				log.Println("found meta info", m)
+				meta.Del(oldname)
+			}
+			meta.Write()
 
-		m2 := Meta{Root: trashPath}
-		m2.Get()
-		m.OldLoc = filepath.Join(filedir, oldname)
-		m2.MetaInfo[newname] = m
-		m2.Write()
+			// 			m2 := Meta{Root: trashPath}
+			m2 := lib.NewMeta(trashPath)
+			// 			err = m2.Load(trashPath)
+			// 			if err != nil {
+			// 				m2.init(trashPath)
+			// 			}
+			m.OldLoc = filepath.Join(filedir, oldname)
+			m2.MetaInfo[newname] = m
+			m2.Write()
+		}
 
 		v.Del("delete")
 		v.Del("name")
@@ -579,9 +582,9 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	doAddTags := v.Get("addtags")
 	if len(doAddTags) != 0 {
 		name := v.Get("name")
-		m, ok := meta.MetaInfo[name]
+		m, ok := meta.Get(name)
 		if !ok {
-			m = MetaInfo{}
+			m = lib.NewMetaInfo()
 		}
 		for _, v := range strings.Split(v.Get("tags"), " ") {
 			v = strings.Trim(v, " ")
@@ -597,7 +600,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			}
 		}
 		sort.Strings(m.Tags)
-		meta.MetaInfo[name] = m
+		meta.Set(name, m)
 		meta.Write()
 		v.Del("addtags")
 		v.Del("tags")
@@ -610,9 +613,9 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 	doUpdateTags := v.Get("updatetags")
 	if len(doUpdateTags) != 0 {
 		name := v.Get("name")
-		m, ok := meta.MetaInfo[name]
+		m, ok := meta.Get(name)
 		if !ok {
-			m = MetaInfo{}
+			m = lib.NewMetaInfo()
 		}
 		m.Tags = []string{}
 		if v.Get("tags") != "-" {
@@ -631,7 +634,7 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 			}
 		}
 		sort.Strings(m.Tags)
-		meta.MetaInfo[name] = m
+		meta.Set(name, m)
 		meta.Write()
 		v.Del("updatetags")
 		v.Del("tags")
@@ -722,16 +725,10 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		})
 	}
 
-	//
-	// 	metaFile := filepath.Join(filedir, ".KFS_META")
-	page.Meta = meta
-	// 	meta := Meta{MetaInfo: make(map[string]MetaInfo)}
-	// 	b, err := ioutil.ReadFile(metaFile)
-	// 	json.Unmarshal(b, meta.MetaInfo)
-	//
+	page.Meta = *meta
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	for _, d := range dirs {
-		if d.Name() == ".KFS_META" {
+		if d.Name() == KFS {
 			continue
 		}
 		var f PageFile
@@ -751,14 +748,6 @@ func dirList1(w http.ResponseWriter, f http.File, r *http.Request, filedir strin
 		// string or fragment.
 		// 		url := url.URL{Path: name}
 		page.Files = append(page.Files, &f)
-	}
-	if createMeta {
-		meta.Root = filedir
-		for _, v := range page.Files {
-			meta.MetaInfo[v.Name] = MetaInfo{}
-		}
-		b, _ := json.MarshalIndent(meta, "", "  ")
-		ioutil.WriteFile(filepath.Join(meta.Root, ".KFS_META"), b, 0644)
 	}
 	tmpl, err := template.New("page").Funcs(tmpFundMap).Delims(`[[`, `]]`).Parse(staticTemplate)
 	if err != nil {

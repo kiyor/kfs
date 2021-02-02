@@ -68,10 +68,10 @@ func (m *Meta) Load(path string) error {
 }
 
 func (m *Meta) Merge(m2 *Meta) *Meta {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m2.mu.Lock()
-	defer m2.mu.Unlock()
+	// 	m.mu.Lock()
+	// 	defer m.mu.Unlock()
+	// 	m2.mu.Lock()
+	// 	defer m2.mu.Unlock()
 	for k, i2 := range m2.MetaInfo {
 		if i1, ok := m.Get(k); ok {
 			if len(i1.Label) > len(i2.Label) {

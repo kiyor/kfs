@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -11,6 +12,14 @@ import (
 const (
 	KFS = ".KFS_META"
 )
+
+var user [2]int
+var userEnabled bool
+
+func SetUser(u, g int) {
+	user = [2]int{u, g}
+	userEnabled = true
+}
 
 func NewMetaInfo() MetaInfo {
 	return MetaInfo{
@@ -39,7 +48,11 @@ func NewMeta(path string) *Meta {
 func (m *Meta) init(path string) {
 	m.Root = path
 	b, _ := json.MarshalIndent(m, "", "  ")
-	ioutil.WriteFile(filepath.Join(m.Root, KFS), b, 0644)
+	p := filepath.Join(m.Root, KFS)
+	os.WriteFile(p, b, 0644)
+	if userEnabled {
+		os.Chown(p, user[0], user[1])
+	}
 }
 
 func (m *Meta) Load(path string) error {
@@ -122,7 +135,19 @@ func (m *Meta) Write() error {
 		log.Println(err.Error())
 		return err
 	}
-	return ioutil.WriteFile(metaFile, b, 0644)
+	err = os.WriteFile(metaFile, b, 0644)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	if userEnabled {
+		err = os.Chown(metaFile, user[0], user[1])
+		if err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
 type MetaInfo struct {
